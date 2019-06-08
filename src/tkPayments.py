@@ -5,9 +5,15 @@ Created on Wed May 15 22:51:04 2019
 @author: v.shkaberda
 """
 
+from tkcalendar import DateEntry
 from tkinter import ttk, messagebox
 from math import ceil
 import tkinter as tk
+
+# example of subsription and default recipient
+EMAIL_TO = b'\xd0\xa4\xd0\xbe\xd0\xb7\xd0\xb7\xd0\xb8|\
+\xd0\x9b\xd0\xbe\xd0\xb3\xd0\xb8\xd1\x81\xd1\x82\xd0\xb8\xd0\xba\xd0\xb0|\
+\xd0\x90\xd0\xbd\xd0\xb0\xd0\xbb\xd0\xb8\xd1\x82\xd0\xb8\xd0\xba\xd0\xb8'.decode()
 
 
 class LoginError(tk.Tk):
@@ -21,7 +27,7 @@ class LoginError(tk.Tk):
         messagebox.showerror(
                 'Ошибка подключения',
                 'Нет прав для работы с сервером.\n'
-                'Обратитесь на рассылку Фоззи|Логистика|Аналитики'
+                'Обратитесь на рассылку ' + EMAIL_TO
         )
         self.destroy()
 
@@ -37,7 +43,7 @@ class AccessError(tk.Tk):
         messagebox.showerror(
             'Ошибка доступа',
             'Нет прав для работы с приложением.\n'
-            'Для получения прав обратитесь на рассылку Фоззи|Логистика|Аналитики'
+            'Для получения прав обратитесь на рассылку ' + EMAIL_TO
         )
         self.destroy()
 
@@ -48,7 +54,7 @@ class PaymentApp(tk.Tk):
         self.title('Платежи')
         # geometry_storage {Framename:(width, height)}
         self._geometry = {'MainMenu': (250, 320),
-                          'CreateForm': (800, 600),
+                          'CreateForm': (880, 600),
                           'PreviewForm': (1200, 600),
                           'DiscardForm': (1200, 600),
                           'ApproveForm': (1200, 350)}
@@ -59,16 +65,16 @@ class PaymentApp(tk.Tk):
             style.layout("LightBlue.Treeview.Heading", [
                 ("LightBlue.Treeheading.cell", {'sticky': 'nswe'}),
                 ("LightBlue.Treeheading.border", {'sticky':'nswe', 'children': [
-                    ("LightBlue.Treeheading.padding", {'sticky':'nswe', 'children': [
-                        ("LightBlue.Treeheading.image", {'side':'right', 'sticky':''}),
-                        ("LightBlue.Treeheading.text", {'sticky':'we'})
+                    ("Custom.Treeheading.padding", {'sticky':'nswe', 'children': [
+                        ("Custom.Treeheading.image", {'side':'right', 'sticky':''}),
+                        ("Custom.Treeheading.text", {'sticky':'we'})
                     ]})
                 ]}),
             ])
             style.configure("LightBlue.Treeview.Heading",
-                background="lightblue", foreground="black", relief="flat", font=('Calibri', 10, 'bold'))
+                background="lightblue", foreground="black", relief='groove', font=('Calibri', 10, 'bold'))
             style.map("LightBlue.Treeview.Heading",
-                relief=[('active','groove'),('pressed','sunken')])
+                relief=[('active','sunken'),('pressed','flat')])
 
             style.map('ButtonGreen.TButton')
             style.configure('ButtonGreen.TButton', foreground='green')
@@ -199,34 +205,56 @@ class CreateForm(PaymentFrame):
         self._add_user_label(top)
 
         # First Fill Frame with (MVZ, office, contragentID)
-        row1_cf = tk.Frame(self, name='row1_cf', padx=5)
+        row1_cf = tk.Frame(self, name='row1_cf', padx=15)
 
-        mvz_label = tk.Label(row1_cf, text='МВЗ', padx=10)
-        mvz_label.pack(side=tk.LEFT)
-
+        self.mvz_label = tk.Label(row1_cf, text='МВЗ', padx=10)
         self.mvz_box = ttk.Combobox(row1_cf, width=35)
-        self.mvz_box.pack(in_=row1_cf, side=tk.LEFT, padx=5, pady=5)
         self.mvz_box['values'] = self.mvznames
         self.mvz_box.bind("<<ComboboxSelected>>", self._choose_mvz)
 
         self.mvz_sap = tk.Label(row1_cf, padx=5, bg='lightgray', width=10)
-        self.mvz_sap.pack(side=tk.LEFT)
 
-        office_label = tk.Label(row1_cf, text='Офис', padx=20)
-        office_label.pack(side=tk.LEFT)
-
-        self.office_box = ttk.Combobox(row1_cf, width=25)
-        self.office_box.pack(in_=row1_cf, side=tk.LEFT, padx=5, pady=5)
+        self.office_label = tk.Label(row1_cf, text='Офис', padx=20)
+        self.office_box = ttk.Combobox(row1_cf, width=20)
         self.office_box['values'] = self.mvzSAP
 
+        self.contragent_label = tk.Label(row1_cf, text='Контрагент', padx=20)
+        self.contragent_entry = tk.Entry(row1_cf, width=21)
+
+        # Pack row1_cf
+        self._row1_pack()
+
         # Second Fill Frame with (Plan date, Sum, Tax)
-        row2_cf = tk.Frame(self, name='row2_cf', padx=5)
+        row2_cf = tk.Frame(self, name='row2_cf', padx=15)
+
+        self.plan_date_label = tk.Label(row2_cf, text='Плановая дата', padx=10)
+        self.plan_date_entry = DateEntry(row2_cf, width=12,
+                    font='Calibri', selectmode='day', borderwidth=2)
+
+        self.sum_label = tk.Label(row2_cf, text='Сумма без НДС', padx=20)
+        self.sumtotal = tk.DoubleVar()
+        self.sumtotal.set('0.00')
+        vcmd = (self.register(self._validate_sum))
+        #self.sum_entry = tk.Entry(row2_cf, width=20, textvariable=self.sumtotal)
+        self.sum_entry = tk.Entry(row2_cf, width=20, textvariable=self.sumtotal,
+                        validate='all', validatecommand=(vcmd, '%P'))
+        #self.sum_entry.bind("<FocusOut>", self._on_focus_out)
+
+        self.nds_label = tk.Label(row2_cf, text='НДС', padx=20)
+        self.nds = tk.IntVar()
+        self.nds.set(20)
+        self.nds20 = ttk.Radiobutton(row2_cf, text="20 %", variable=self.nds, value=20)
+        self.nds7 = ttk.Radiobutton(row2_cf, text="7 %", variable=self.nds, value=7)
+        self.nds0 = ttk.Radiobutton(row2_cf, text="0 %", variable=self.nds, value=0)
+
+        # Pack row2_cf
+        self._row2_pack()
 
         # Text Frame
         text_cf = ttk.LabelFrame(self, text=' Описание заявки ', name='text_cf')
 
-        text_field = tk.Text(text_cf)    # input and output box
-        text_field.pack(in_=text_cf, expand=True, pady=15)
+        self.desc_text = tk.Text(text_cf)    # input and output box
+        self.desc_text.pack(in_=text_cf, expand=True, pady=15)
 
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
@@ -262,6 +290,53 @@ class CreateForm(PaymentFrame):
         self.mvz_box.set('')
         self.mvz_sap.config(text='')
         self.office_box.set('')
+        self.contragent_entry.delete(0, tk.END)
+        self.plan_date_entry.delete(0, tk.END)
+        self.desc_text.delete("1.0", tk.END)
+        self.sumtotal.set('0.00')
+        self.nds.set(20)
+
+    def _on_focus_out(self, event):
+        ''' Function to be bind to focus out of self.sum_entry'''
+        sum_entry = self.sum_entry.get().replace(',', '.')
+        try:
+            self.sumtotal.set('{:.2f}'.format(float(sum_entry)))
+        except (TypeError, ValueError):
+            self.sumtotal.set('0.00')
+            messagebox.showerror(
+                    'Некорректная сумма',
+                    'Введена некорретная сумма!'
+                    )
+
+    def _validate_sum(self, sum_entry):
+        ''' Validation of self.sum_entry'''
+        sum_entry = sum_entry.replace(',', '.')
+        if not sum_entry:
+            return True
+        try:
+            float(sum_entry)
+            return True
+        except (TypeError, ValueError):
+            return False
+
+    def _row1_pack(self):
+        self.mvz_label.pack(side=tk.LEFT)
+        self.mvz_box.pack(side=tk.LEFT, padx=5, pady=5)
+        self.mvz_sap.pack(side=tk.LEFT)
+        self.contragent_entry.pack(side=tk.RIGHT, padx=10, pady=5)
+        self.contragent_label.pack(side=tk.RIGHT)
+        self.office_box.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.office_label.pack(side=tk.RIGHT)
+
+    def _row2_pack(self):
+        self.plan_date_label.pack(side=tk.LEFT)
+        self.plan_date_entry.pack(side=tk.LEFT, padx=5, pady=5)
+        self.nds0.pack(side=tk.RIGHT, padx=7)
+        self.nds7.pack(side=tk.RIGHT, padx=7)
+        self.nds20.pack(side=tk.RIGHT, padx=8)
+        self.nds_label.pack(side=tk.RIGHT, padx=5)
+        self.sum_entry.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.sum_label.pack(side=tk.RIGHT)
 
 
 class PreviewForm(PaymentFrame):
