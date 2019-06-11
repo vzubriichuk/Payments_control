@@ -33,9 +33,8 @@ def main():
             app = tkp.PaymentApp(**refs)
             app.mainloop()
 
-
     except SQLError as e:
-        #writelog(e)
+        writelog(e)
         # login failed
         if e.args[0] == '42000':
             tkp.LoginError()
@@ -44,5 +43,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
-    input('Press Enter...')
+    try:
+        main()
+        sys.exit()
+    except Exception as e:
+        writelog(e)
+        print(e)

@@ -36,31 +36,56 @@ class DBConnect(object):
         self.__cursor.execute('exec [payment].[Access_Check]')
         access = self.__cursor.fetchone()
         # return access[0] if access else 0
-        if access and access[0] == 1:
+        if access and access[0]:
             return True
 
     def get_user_info(self):
         self.__cursor.execute("select UserID, ShortUserName \
-                              from payment.People \
-                              where UserLogin = right(ORIGINAL_LOGIN(), charindex('\\', ORIGINAL_LOGIN()))")
+          from payment.People \
+          where UserLogin = right(ORIGINAL_LOGIN(), len(ORIGINAL_LOGIN()) - charindex( '\\' , ORIGINAL_LOGIN()))")
         return self.__cursor.fetchone()
 
     def get_approvelist(self, userID):
         query = '''
-        select ID, ShortUserName, cast(date_created as smalldatetime) as date_created,
+        select pl.ID, ShortUserName, cast(date_created as smalldatetime) as date_created,
            MVZ, OfficeID, ContragentID, date_planed,
-           SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(9, 2)),
-           p.ValueName as StatusName, pl.Description
+           SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
+           p.ValueName as StatusName, pl.Description,
+           LEFT(REPLACE(REPLACE(Description, CHAR(13), ' '), CHAR(10), ' '), 15) +
+               IIF(LEN(Description) > 15, ' ...', '') as ShortDesc
         from payment.PaymentsList pl
+        join payment.PaymentsApproval appr on pl.ID = appr.PaymentID
+                                           and appr.is_active_approval = 1
+                                           and appr.UserID = ?
         join payment.People pp on pl.UserID = pp.UserID
         join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
                                     and p.idParams = 2
                                     and p.Enabled = 1
                                     and pl.StatusID = 1
             '''
-        self.__cursor.execute(query)
+        self.__cursor.execute(query, userID)
         res = self.__cursor.fetchall()
         return res
+
+    def create_request(self, userID, mvz, office, contragent, plan_date,
+                       sumtotal, nds, text):
+        query = '''
+        exec payment.create_request @UserID = ?,
+                                    @MVZ = ?,
+                                    @OfficeID = ?,
+                                    @ContragentID = ?,
+                                    @date_planed = ?,
+                                    @Description = ?,
+                                    @SumNoTax = ?,
+                                    @Tax = ?
+            '''
+        try:
+            self.__cursor.execute(query, userID, mvz, office, contragent, plan_date,
+                           text, sumtotal, nds)
+            self.__db.commit()
+            return 1
+        except pyodbc.ProgrammingError:
+            return 0
 
     def get_discardlist(self, userID):
         query = '''
@@ -87,8 +112,10 @@ class DBConnect(object):
         self.__cursor.execute('''
         select ID, ShortUserName, cast(date_created as smalldatetime) as date_created,
            MVZ, OfficeID, ContragentID, date_planed,
-           SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(9, 2)),
-           p.ValueName as StatusName, pl.Description
+           SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
+           p.ValueName as StatusName, pl.Description,
+           LEFT(REPLACE(REPLACE(Description, CHAR(13), ' '), CHAR(10), ' '), 15) +
+               IIF(LEN(Description) > 15, ' ...', '') as ShortDesc
         from payment.PaymentsList pl
         join payment.People pp on pl.UserID = pp.UserID
         join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
@@ -104,13 +131,13 @@ class DBConnect(object):
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
-    def update_confirmed(self, confirmID, is_confirmed):
+    def update_confirmed(self, userID, paymentID, is_approved):
         query = '''
-        UPDATE payment.PaymentsList
-        SET StatusID = ?
-        where ID = ?
+        exec payment.approve_request @UserID = ?,
+                                     @paymentID = ?,
+                                     @is_approved = ?
         '''
-        self.__cursor.execute(query, (3 if is_confirmed else 4, confirmID))
+        self.__cursor.execute(query, userID, paymentID, is_approved)
         self.__db.commit()
 
     def update_discarded(self, discardID):
@@ -119,7 +146,7 @@ class DBConnect(object):
         SET StatusID = 2
         where ID = ?
         '''
-        discardID = [tuple(str(dID)) for dID in discardID]
+        discardID = [(dID,) for dID in discardID]
         self.__cursor.executemany(query, discardID)
         self.__db.commit()
 

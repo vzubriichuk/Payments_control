@@ -15,7 +15,7 @@ def writelog(e):
     now = time.localtime()
 
     with open(fname, 'a') as f:
-        f.write('{} {} {}\n'.format(time.strftime("%d-%m-%Y %H:%M:%S", now), e))
+        f.write('{} {}\n'.format(time.strftime("%d-%m-%Y %H:%M:%S", now), e))
 
 
 if __name__ == '__main__':
