@@ -35,37 +35,9 @@ class DBConnect(object):
         '''
         self.__cursor.execute('exec [payment].[Access_Check]')
         access = self.__cursor.fetchone()
-        # return access[0] if access else 0
-        if access and access[0]:
+        # check AccessType and isSuperUser
+        if access and (access[0] in (1, 2) or access[1]):
             return True
-
-    def get_user_info(self):
-        self.__cursor.execute("select UserID, ShortUserName \
-          from payment.People \
-          where UserLogin = right(ORIGINAL_LOGIN(), len(ORIGINAL_LOGIN()) - charindex( '\\' , ORIGINAL_LOGIN()))")
-        return self.__cursor.fetchone()
-
-    def get_approvelist(self, userID):
-        query = '''
-        select pl.ID, ShortUserName, cast(date_created as smalldatetime) as date_created,
-           MVZ, OfficeID, ContragentID, date_planed,
-           SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
-           p.ValueName as StatusName, pl.Description,
-           LEFT(REPLACE(REPLACE(Description, CHAR(13), ' '), CHAR(10), ' '), 15) +
-               IIF(LEN(Description) > 15, ' ...', '') as ShortDesc
-        from payment.PaymentsList pl
-        join payment.PaymentsApproval appr on pl.ID = appr.PaymentID
-                                           and appr.is_active_approval = 1
-                                           and appr.UserID = ?
-        join payment.People pp on pl.UserID = pp.UserID
-        join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
-                                    and p.idParams = 2
-                                    and p.Enabled = 1
-                                    and pl.StatusID = 1
-            '''
-        self.__cursor.execute(query, userID)
-        res = self.__cursor.fetchall()
-        return res
 
     def create_request(self, userID, mvz, office, contragent, plan_date,
                        sumtotal, nds, text):
@@ -87,6 +59,73 @@ class DBConnect(object):
         except pyodbc.ProgrammingError:
             return 0
 
+    def get_user_info(self):
+        self.__cursor.execute("select UserID, ShortUserName, AccessType, isSuperUser \
+          from payment.People \
+          where UserLogin = right(ORIGINAL_LOGIN(), len(ORIGINAL_LOGIN()) - charindex( '\\' , ORIGINAL_LOGIN()))")
+        return self.__cursor.fetchone()
+
+    def get_allowed_initiators(self, UserID, AccessType, isSuperUser):
+        if isSuperUser:
+            query = '''
+            select UserID, UserName
+            from payment.People
+            where AccessType in (1, 2, 3)
+            order by UserName
+            '''
+        elif AccessType == 1:
+            query = '''
+            select UserID, UserName
+            from payment.People
+            where UserID = {}
+            '''.format(UserID)
+        elif AccessType == 2:
+            query = '''
+            select UserID, UserName
+            from payment.People
+            where AccessType in (1, 2, 3)
+                or UserID = {}
+            order by UserName
+            '''.format(UserID)
+        self.__cursor.execute(query)
+        return [(None, 'Все'),] + self.__cursor.fetchall()
+
+    def get_approvals(self, paymentID):
+        query = '''
+        select pappr.ShortUserName as approval,
+        case appr.is_approved when 0 then 'Отклонил(-а)'
+                              when 1 then 'Утвердил(-а)'
+                              else '' end as status
+        from payment.PaymentsApproval appr
+            join payment.People pappr on appr.UserID = pappr.UserID
+        where appr.PaymentID = ?
+        order by approval_order ASC
+            '''
+        self.__cursor.execute(query, paymentID)
+        return self.__cursor.fetchall()
+
+    def get_approvelist(self, userID):
+        query = '''
+        select pl.ID, ShortUserName, cast(date_created as date) as date_created,
+           cast(date_created as smalldatetime) as datetime_created,
+           MVZ, OfficeID, isnull(ContragentID, '') as ContragentID, date_planed,
+           SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
+           p.ValueName as StatusName, pl.Description,
+           NULL as [Утверждающий]
+        from payment.PaymentsList pl
+        join payment.PaymentsApproval appr on pl.ID = appr.PaymentID
+                                           and appr.is_active_approval = 1
+                                           and appr.UserID = ?
+        join payment.People pp on pl.UserID = pp.UserID
+        join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
+                                    and p.idParams = 2
+                                    and p.Enabled = 1
+                                    and pl.StatusID = 1
+            '''
+        self.__cursor.execute(query, userID)
+        res = self.__cursor.fetchall()
+        return res
+
     def get_discardlist(self, userID):
         query = '''
         select ID, cast(date_created as date) as date_created,
@@ -104,26 +143,55 @@ class DBConnect(object):
 #                                where UserID = 2")
         self.__cursor.execute("select FullName, SAPmvz \
                                 from LogisticFinance.BTool.aid_CostObject_Detail \
-                                where SAPmvz != 'пусто'")
-        res = self.__cursor.fetchall()
-        return res
+                                where SAPmvz != 'пусто' \
+                                order by FullName")
+        return self.__cursor.fetchall()
 
-    def get_paymentslist(self):
-        self.__cursor.execute('''
-        select ID, ShortUserName, cast(date_created as smalldatetime) as date_created,
-           MVZ, OfficeID, ContragentID, date_planed,
+    def get_paymentslist(self, user_info, initiator, mvz, office, contragent,
+                         plan_date_m, plan_date_y, sumtotal_from, sumtotal_to, nds):
+        ''' Generate query according to user's acces type and filters.
+        '''
+        query = '''
+        select pl.ID, pp.ShortUserName, cast(date_created as date) as date_created,
+           cast(date_created as smalldatetime) as datetime_created,
+           MVZ, OfficeID, isnull(ContragentID, '') as ContragentID, date_planed,
            SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
            p.ValueName as StatusName, pl.Description,
-           LEFT(REPLACE(REPLACE(Description, CHAR(13), ' '), CHAR(10), ' '), 15) +
-               IIF(LEN(Description) > 15, ' ...', '') as ShortDesc
+           case when pl.StatusID = 1 then isnull(pappr.ShortUserName, '') else '' end as approval
         from payment.PaymentsList pl
         join payment.People pp on pl.UserID = pp.UserID
         join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
                                     and p.idParams = 2
                                     and p.Enabled = 1
-            ''')
-        res = self.__cursor.fetchall()
-        return res
+        -- approvals
+        left join payment.PaymentsApproval appr on pl.ID = appr.PaymentID
+                                           and appr.is_active_approval = 1
+        left join payment.People pappr on appr.UserID = pappr.UserID
+        where 1=1
+        '''.format(plan_date_y)
+        if not user_info.isSuperUser:
+            query += 'and (UserID = {0} or exists(select * from payment.PaymentsApproval _appr \
+                    where pl.ID = _appr.PaymentID and _appr.UserID = {0}))\n'.format(user_info.UserID)
+        if initiator:
+            query += 'and UserID = {}\n'.format(initiator)
+        if mvz:
+            query += 'and MVZ = {}\n'.format(mvz)
+        if office:
+            query += 'and OfficeID = {}\n'.format(office)
+        if contragent:
+            query += 'and ContragentID = {}\n'.format(contragent)
+        if plan_date_y:
+            query += 'and year(date_planed) = {}\n'.format(plan_date_y)
+        if plan_date_m:
+            query += 'and month(date_planed) = {}\n'.format(plan_date_m)
+        if sumtotal_from:
+            query += 'and SumNoTax >= {}\n'.format(sumtotal_from)
+        if sumtotal_to:
+            query += 'and SumNoTax <= {}\n'.format(sumtotal_from)
+        if not nds == -1:
+            query += 'and Tax = {}\n'.format(nds)
+        self.__cursor.execute(query)
+        return self.__cursor.fetchall()
 
     def raw_query(self, query):
         ''' Takes the query and returns output from db.

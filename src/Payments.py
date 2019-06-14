@@ -5,6 +5,7 @@ Created on Wed May 15 22:11:05 2019
 @author: v.shkaberda
 """
 
+from collections import namedtuple
 from db_connect import DBConnect
 from log_error import writelog
 from pyodbc import Error as SQLError
@@ -21,14 +22,20 @@ def main():
                 tkp.AccessError()
                 sys.exit()
 
-            # load references
-            user_info = sql.get_user_info()
-            refs = {'connection': sql,
-                    'userID': user_info[0],
-                    'shortusername': user_info[1],
-                    'mvz': sql.get_MVZ()
-                    }
+            UserInfo = namedtuple('UserInfo', ['UserID', 'ShortUserName',
+                                               'AccessType', 'isSuperUser'])
 
+            # load references
+            user_info = UserInfo(*sql.get_user_info())
+            refs = {'connection': sql,
+#                    'userID': user_info.UserID,
+#                    'shortusername': user_info.ShortUserName,
+                    'user_info': user_info,
+                    'mvz': sql.get_MVZ(),
+                    'allowed_initiators': sql.get_allowed_initiators(user_info.UserID,
+                                                                     user_info.AccessType,
+                                                                     user_info.isSuperUser)
+                    }
             # Run app
             app = tkp.PaymentApp(**refs)
             app.mainloop()
@@ -45,7 +52,10 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-        sys.exit()
     except Exception as e:
         writelog(e)
         print(e)
+        raise
+    finally:
+        sys.exit()
+
