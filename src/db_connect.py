@@ -8,8 +8,8 @@ import pyodbc
 
 
 class DBConnect(object):
-    ''' Provides connection to database and functions to work with server.
-    '''
+    """ Provides connection to database and functions to work with server.
+    """
     def __init__(self, *, server, db):
         self._server = server
         self._db = db
@@ -30,9 +30,9 @@ class DBConnect(object):
         self.__db.close()
 
     def access_check(self):
-        ''' Check user permission.
+        """ Check user permission.
             If access prmitted returns True, otherwise None.
-        '''
+        """
         self.__cursor.execute('exec [payment].[Access_Check]')
         access = self.__cursor.fetchone()
         # check AccessType and isSuperUser
@@ -53,7 +53,7 @@ class DBConnect(object):
             '''
         try:
             self.__cursor.execute(query, userID, mvz, office, contragent, plan_date,
-                           text, sumtotal, nds)
+                                  text, sumtotal, nds)
             self.__db.commit()
             return 1
         except pyodbc.ProgrammingError:
@@ -138,19 +138,16 @@ class DBConnect(object):
         return self.__cursor.fetchall()
 
     def get_MVZ(self):
-#        self.__cursor.execute("select distinct MVZ_Name \
-#                                from LogisticFinance.BTool.aid_Access_Matrix_Actual_Detail \
-#                                where UserID = 2")
         self.__cursor.execute("select FullName, SAPmvz \
-                                from LogisticFinance.BTool.aid_CostObject_Detail \
-                                where SAPmvz != 'пусто' \
-                                order by FullName")
+                               from LogisticFinance.BTool.aid_CostObject_Detail \
+                               where SAPmvz != 'пусто' \
+                               order by FullName")
         return self.__cursor.fetchall()
 
     def get_paymentslist(self, user_info, initiator, mvz, office, contragent,
                          plan_date_m, plan_date_y, sumtotal_from, sumtotal_to, nds):
-        ''' Generate query according to user's acces type and filters.
-        '''
+        """ Generate query according to user's acces type and filters.
+        """
         query = '''
         select pl.ID, pp.ShortUserName, cast(date_created as date) as date_created,
            cast(date_created as smalldatetime) as datetime_created,
@@ -194,8 +191,8 @@ class DBConnect(object):
         return self.__cursor.fetchall()
 
     def raw_query(self, query):
-        ''' Takes the query and returns output from db.
-        '''
+        """ Takes the query and returns output from db.
+        """
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 

@@ -4,13 +4,11 @@ Created on Wed May 15 22:51:04 2019
 
 @author: v.shkaberda
 """
-
 from calendar import month_name
 from datetime import datetime
 from tkcalendar import DateEntry
 from tkinter import ttk, messagebox
 from math import ceil
-
 import locale
 import tkinter as tk
 
@@ -21,8 +19,8 @@ EMAIL_TO = b'\xd0\xa4\xd0\xbe\xd0\xb7\xd0\xb7\xd0\xb8|\
 
 
 class LoginError(tk.Tk):
-    ''' Raise an error when user doesn't have permission to work with db.
-    '''
+    """ Raise an error when user doesn't have permission to work with db.
+    """
     def __init__(self):
         super().__init__()
 
@@ -37,8 +35,8 @@ class LoginError(tk.Tk):
 
 
 class AccessError(tk.Tk):
-    ''' Raise an error when user doesn't have permission to work with app.
-    '''
+    """ Raise an error when user doesn't have permission to work with app.
+    """
     def __init__(self):
         super().__init__()
 
@@ -82,17 +80,17 @@ class PaymentApp(tk.Tk):
             style.element_create("HeaderStyle.Treeheading.border", "from", "default")
             style.layout("HeaderStyle.Treeview.Heading", [
                 ("HeaderStyle.Treeheading.cell", {'sticky': 'nswe'}),
-                ("HeaderStyle.Treeheading.border", {'sticky':'nswe', 'children': [
-                    ("Custom.Treeheading.padding", {'sticky':'nswe', 'children': [
-                        ("Custom.Treeheading.image", {'side':'right', 'sticky':''}),
-                        ("Custom.Treeheading.text", {'sticky':'we'})
+                ("HeaderStyle.Treeheading.border", {'sticky': 'nswe', 'children': [
+                    ("HeaderStyle.Treeheading.padding", {'sticky': 'nswe', 'children': [
+                        ("HeaderStyle.Treeheading.image", {'side': 'right', 'sticky':''}),
+                        ("HeaderStyle.Treeheading.text", {'sticky': 'we'})
                     ]})
                 ]}),
             ])
             style.configure("HeaderStyle.Treeview.Heading",
                 background="#eaeaea", foreground="black", relief='groove', font=('Calibri', 10))
             style.map("HeaderStyle.Treeview.Heading",
-                relief=[('active','sunken'),('pressed','flat')])
+                      relief=[('active', 'sunken'), ('pressed', 'flat')])
 
             style.map('ButtonGreen.TButton')
             style.configure('ButtonGreen.TButton', foreground='green')
@@ -108,7 +106,8 @@ class PaymentApp(tk.Tk):
             style.configure("Big.TLabelframe.Label", font=("Calibri", 14))
             style.configure("TMenubutton", background='white')
         except tk.TclError:
-            # if during debug previous tk wasn't destroyed and style remains modified
+            # if during debug previous tk wasn't destroyed
+            # and style remains modified
             pass
 
         # the container is where we'll stack a bunch of frames
@@ -140,8 +139,8 @@ class PaymentApp(tk.Tk):
         self.geometry('{}x{}+{}+{}'.format(w, h, start_x, start_y))
 
     def _show_frame(self, frame_name):
-        ''' Show a frame for the given frame name
-        '''
+        """ Show a frame for the given frame name
+        """
         if frame_name == 'MainMenu':
             self.resizable(width=False, height=False)
         else:
@@ -181,7 +180,7 @@ class PaymentFrame(tk.Frame):
         user_label.pack(side=tk.RIGHT, anchor=tk.NE)
 
     def _validate_sum(self, sum_entry):
-        ''' Validation of self.sum_entry'''
+        """ Validation of self.sum_entry"""
         sum_entry = sum_entry.replace(',', '.')
         if not sum_entry:
             return True
@@ -342,7 +341,7 @@ class CreateForm(PaymentFrame):
         self.desc_text.delete("1.0", tk.END)
 
 #    def _on_focus_out(self, event):
-#        ''' Function to be bind to focus out of self.sum_entry'''
+#        """ Function to be bind to focus out of self.sum_entry"""
 #        sum_entry = self.sum_entry.get().replace(',', '.')
 #        try:
 #            self.sumtotal.set('{:.2f}'.format(float(sum_entry)))
@@ -382,7 +381,7 @@ class CreateForm(PaymentFrame):
                    'sumtotal': self.sumtotal.get() if self.sum_entry.get() else 0.,
                    'nds':  self.nds.get(),
                    'text': self.desc_text.get("1.0", tk.END)
-                }
+                   }
         created_success = self.conn.create_request(userID=self.userID, **request)
         if created_success:
             messagebox.showinfo(
@@ -426,7 +425,7 @@ class PreviewForm(PaymentFrame):
         self.initiatorsID, self.initiators = zip(*allowed_initiators)
         # Parameters for sorting
         self.rows = None  # store all rows for sorting and redrawing
-        self.sort_reversed_index = None  # make reverse sorting for last sorted column
+        self.sort_reversed_index = None  # reverse sorting for last sorted column
         self.month = list(month_name)
         # Info for generating get_paymentslist query
         self.user_info = user_info
@@ -513,10 +512,10 @@ class PreviewForm(PaymentFrame):
 
         # column name and width
         #self.headings=('a', 'bb', 'cccc')  # for debug
-        self.headings = {'№':10, 'Инициатор':140, 'Дата создания':100, 'Дата/время создания':100,
-                    'МВЗ':60, 'Офис':100, 'Контрагент':60, 'Плановая дата':100,
-                    'Сумма без НДС':85, 'Сумма с НДС':85, 'Статус':30,
-                    'Описание':120, 'Утверждающий':120}
+        self.headings = {'№': 10, 'Инициатор': 140, 'Дата создания': 100, 'Дата/время создания': 100,
+                    'МВЗ': 60, 'Офис': 100, 'Контрагент': 60, 'Плановая дата': 100,
+                    'Сумма без НДС': 85, 'Сумма с НДС': 85, 'Статус': 30,
+                    'Описание': 120, 'Утверждающий': 120}
 
         self.table = ttk.Treeview(preview_cf, show="headings", selectmode="browse", style="HeaderStyle.Treeview")
         self._init_table(preview_cf)
@@ -611,7 +610,7 @@ class PreviewForm(PaymentFrame):
         self.sum_label_from.pack(side=tk.RIGHT, padx=2)
 
     def _refresh(self):
-        ''' Extract information from filters '''
+        """ Extract information from filters """
         filters = {'initiator': self.initiatorsID[self.initiator_box.current()],
                    'mvz': self.mvzSAP[self.mvz_box.current()],
                    'office': self.office_box.current(),
@@ -621,12 +620,12 @@ class PreviewForm(PaymentFrame):
                    'sumtotal_from': self.sumtotal_from.get() if self.sum_entry_from.get() else 0.,
                    'sumtotal_to': self.sumtotal_to.get() if self.sum_entry_to.get() else 0.,
                    'nds':  self.nds.get()
-                }
+                   }
         self.rows = self.conn.get_paymentslist(self.user_info, **filters)
         self._show_rows(self.rows)
 
     def _show_detail(self, event=None):
-        ''' Show details when double-clicked on row '''
+        """ Show details when double-clicked on row """
         if not event or event.y > 19:
             curRow = self.table.focus()
             if curRow:
@@ -635,8 +634,8 @@ class PreviewForm(PaymentFrame):
                 newlevel.iconbitmap('../resources/preview.ico')
                 if self.approveform_bool:
                     ApproveConfirmation(newlevel, self, self.conn, self.userID,
-                                    self.headings,
-                                    self.table.item(curRow).get('values'))
+                                        self.headings,
+                                        self.table.item(curRow).get('values'))
                 else:
                     DetailedPreview(newlevel, self, self.conn, self.userID,
                                     self.headings,
@@ -656,17 +655,16 @@ class PreviewForm(PaymentFrame):
             # determine index of this column in self.rows
             sort_col = self.table["columns"].index(self.table["displaycolumns"][disp_col])
             self.rows.sort(key=lambda x: x[sort_col],
-                           reverse=self.sort_reversed_index==sort_col)
+                           reverse=self.sort_reversed_index == sort_col)
             # store index of last sorted column if sort wasn't reversed
             self.sort_reversed_index = None if self.sort_reversed_index==sort_col else sort_col
             self._show_rows(self.rows)
 
-
     def _show_rows(self, rows=((777, 88, 9),
-                                 ('abce', 'de`24f', 'gh`24k'),
-                                 ('', '1', ''),
-                                 ('123123', '11', '2'))*3):
-        ''' Refresh table with new rows '''
+                               ('abce', 'de`24f', 'gh`24k'),
+                               ('', '1', ''),
+                               ('123123', '11', '2'))*3):
+        """ Refresh table with new rows """
         self.table.delete(*self.table.get_children())
 
         for row in rows:
@@ -741,7 +739,7 @@ class DiscardForm(PaymentFrame):
                 map(lambda d: '  Заявка №{} от {}, МВЗ: {}, офис: {}, '
                     'план.дата: {}, сумма: {}, описание: {}'.format(*d),
                     discardlist
-                ))
+                    ))
         return discardlist
 
     def _refresh(self):
@@ -754,7 +752,6 @@ class ApproveForm(PreviewForm):
         super().__init__(**kwargs)
 
     def _refresh(self):
-        ''' Refresh  '''
         self.table.delete(*self.table.get_children())
         rows = self.conn.get_approvelist(self.userID)
         self._show_rows(rows)
@@ -814,7 +811,6 @@ class DetailedRequest(tk.Frame):
                              command=lambda: self._close(True), style='ButtonGreen.TButton')
             bt1.pack(side=tk.RIGHT, padx=15, pady=5)
 
-
     def _pack_frames(self):
         # Pack frames
         self.top.pack(side=tk.TOP, fill=tk.X, expand=False)
@@ -825,22 +821,22 @@ class DetailedRequest(tk.Frame):
         self.pack()
 
     def _newRow(self, frame, fonts, rowNumber, info):
-        ''' Adds a new line to the table '''
+        """ Adds a new line to the table """
 
         numberOfLines = []       # List to store number of lines needed
-        columnWidths = [20, 50]  # Width of the different columns in the table - unit: text
+        columnWidths = [20, 50]  # Width of the different columns in the table
         stringLength = []        # Lengt of the strings in the info2Add list
 
-        #Find the length of each element in the info2Add list
+        # Find the length of each element in the info2Add list
         for item in info:
             stringLength.append(len(str(item)))
             numberOfLines.append(str(item).count('\n'))
 
-        #Find the number of lines needed for each column
+        # Find the number of lines needed for each column
         for index, item in enumerate(stringLength):
             numberOfLines[index] += (ceil(item/columnWidths[index]))
 
-        #Find the maximum number of lines needed
+        # Find the maximum number of lines needed
         lineNumber = max(numberOfLines)
 
         # Define labels (columns) for row
@@ -878,7 +874,7 @@ if __name__ == '__main__':
     from collections import namedtuple
 
     UserInfo = namedtuple('UserInfo', ['UserID', 'ShortUserName',
-                                               'AccessType', 'isSuperUser'])
+                                       'AccessType', 'isSuperUser'])
 
     with DBConnect(server='s-kv-center-s59', db='LogisticFinance') as sql:
         try:

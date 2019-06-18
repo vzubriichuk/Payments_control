@@ -4,7 +4,6 @@ Created on Wed May 15 22:11:05 2019
 
 @author: v.shkaberda
 """
-
 from collections import namedtuple
 from db_connect import DBConnect
 from log_error import writelog
@@ -28,8 +27,6 @@ def main():
             # load references
             user_info = UserInfo(*sql.get_user_info())
             refs = {'connection': sql,
-#                    'userID': user_info.UserID,
-#                    'shortusername': user_info.ShortUserName,
                     'user_info': user_info,
                     'mvz': sql.get_MVZ(),
                     'allowed_initiators': sql.get_allowed_initiators(user_info.UserID,
@@ -58,4 +55,3 @@ if __name__ == '__main__':
         raise
     finally:
         sys.exit()
-
