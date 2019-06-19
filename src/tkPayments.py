@@ -56,11 +56,9 @@ class PaymentApp(tk.Tk):
         self.title('Заявки на оплату')
         self.iconbitmap('../resources/payment.ico')
         # geometry_storage {Framename:(width, height)}
-        self._geometry = {'MainMenu': (280, 320),
+        self._geometry = {'PreviewForm': (1200, 600),
                           'CreateForm': (880, 600),
-                          'PreviewForm': (1200, 600),
-                          'DiscardForm': (880, 400),
-                          'ApproveForm': (880, 350)}
+                          'DiscardForm': (880, 400)}
         # Virtual event for creating request
         self.event_add("<<create>>", "<Control-S>", "<Control-s>",
                        "<Control-Ucircumflex>", "<Control-ucircumflex>",
@@ -69,7 +67,7 @@ class PaymentApp(tk.Tk):
         self.bind("<<create>>", self._create_request)
         self.active_frame = None
         # handle the window close event
-        self.protocol("WM_DELETE_WINDOW", self._to_main_menu)
+        self.protocol("WM_DELETE_WINDOW", self._to_preview_form)
         # hide until all frames have been created
         self.withdraw()
         # To import months names in cyrillic
@@ -118,14 +116,14 @@ class PaymentApp(tk.Tk):
         container.grid_columnconfigure(0, weight=1)
 
         self._frames = {}
-        for F in (MainMenu, CreateForm, PreviewForm, DiscardForm, ApproveForm):
+        for F in (PreviewForm, CreateForm, DiscardForm):
             frame_name = F.__name__
             frame = F(parent=container, controller=self, **kwargs)
             self._frames[frame_name] = frame
             # put all of them in the same location
             frame.grid(row=0, column=0, sticky='nsew')
 
-        self._show_frame('MainMenu')
+        self._show_frame('PreviewForm')
         # restore after withdraw
         self.deiconify()
 
@@ -141,17 +139,13 @@ class PaymentApp(tk.Tk):
     def _show_frame(self, frame_name):
         """ Show a frame for the given frame name
         """
-        if frame_name == 'MainMenu':
-            self.resizable(width=False, height=False)
-        else:
-            self.resizable(width=True, height=True)
         frame = self._frames[frame_name]
         frame.tkraise()
         self._center_window(*(self._geometry[frame_name]))
-        if frame_name in ('DiscardForm', 'ApproveForm'):
-            frame._refresh()
-        if frame_name in ('PreviewForm', 'ApproveForm'):
+        if frame_name in ('PreviewForm'):
             frame._resize_columns()
+        if frame_name in ('DiscardForm', 'PreviewForm'):
+            frame._refresh()
         self.active_frame = frame_name
 
     def _create_request(self, event):
@@ -159,9 +153,9 @@ class PaymentApp(tk.Tk):
         if self.active_frame == 'CreateForm':
             self._frames[self.active_frame]._create_request()
 
-    def _to_main_menu(self):
-        if self.active_frame != 'MainMenu':
-            self._show_frame('MainMenu')
+    def _to_preview_form(self):
+        if self.active_frame != 'PreviewForm':
+            self._show_frame('PreviewForm')
         elif messagebox.askokcancel("Выход", "Выйти из приложения?"):
             self.destroy()
 
@@ -182,49 +176,12 @@ class PaymentFrame(tk.Frame):
     def _validate_sum(self, sum_entry):
         """ Validation of self.sum_entry"""
         sum_entry = sum_entry.replace(',', '.')
-        if not sum_entry:
-            return True
         try:
-            if 0 <= float(sum_entry) < 10**9:
+            if not sum_entry or 0 <= float(sum_entry) < 10**9:
                 return True
         except (TypeError, ValueError):
             return False
-
-
-class MainMenu(PaymentFrame):
-    def __init__(self, parent, controller, connection, user_info, **kwargs):
-        super().__init__(parent, controller, connection, user_info)
-
-        top = tk.Frame(self, name='top', padx=5)
-        top.pack(side=tk.TOP, fill=tk.X)
-
-        # Label to customize bottom text
-        bottommenu = ttk.LabelFrame(self, text='Выберите действие:', name='bottommenu',
-                                    style='Big.TLabelframe'
-                                )
-        bottommenu.pack(side=tk.TOP, fill=tk.Y, expand=False, padx=10, pady=5)
-
-        self._add_user_label(top)
-
-        bt1 = ttk.Button(bottommenu, text="Создать", width=17, style='ButtonMenu.TButton',
-                         command=lambda: controller._show_frame('CreateForm'))
-        bt1.pack(side=tk.TOP, padx=15, pady=7, expand=False)
-
-        bt2 = ttk.Button(bottommenu, text="Отменить", width=17, style='ButtonMenu.TButton',
-                         command=lambda: controller._show_frame('DiscardForm'))
-        bt2.pack(side=tk.TOP, padx=15, pady=7, expand=False)
-
-        bt3 = ttk.Button(bottommenu, text="Утвердить", width=17, style='ButtonMenu.TButton',
-                         command=lambda: controller._show_frame('ApproveForm'))
-        bt3.pack(side=tk.TOP, padx=15, pady=7, expand=False)
-
-        bt4 = ttk.Button(bottommenu, text="Просмотр", width=17, style='ButtonMenu.TButton',
-                         command=lambda: controller._show_frame('PreviewForm'))
-        bt4.pack(side=tk.TOP, padx=15, pady=7, expand=False)
-
-        bt5 = ttk.Button(bottommenu, text="Выход", width=17, style='ButtonMenu.TButton',
-                         command=controller.destroy)
-        bt5.pack(side=tk.TOP, padx=15, pady=7, expand=False)
+        return False
 
 
 class CreateForm(PaymentFrame):
@@ -279,10 +236,12 @@ class CreateForm(PaymentFrame):
 
         self.sum_label = tk.Label(row2_cf, text='Сумма без НДС', padx=20)
         self.sumtotal = tk.DoubleVar()
+        self.sumtotal.trace("w", self.var_callback)
         self.sumtotal.set('0.00')
         vcmd = (self.register(self._validate_sum))
         self.sum_entry = tk.Entry(row2_cf, width=20, textvariable=self.sumtotal,
-                        validate='all', validatecommand=(vcmd, '%P'))
+                        validate='all', validatecommand=(vcmd, '%P')
+                        )
         # Alternative validation
         #self.sum_entry = tk.Entry(row2_cf, width=20, textvariable=self.sumtotal)
         #self.sum_entry.bind("<FocusOut>", self._on_focus_out)
@@ -306,8 +265,8 @@ class CreateForm(PaymentFrame):
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
 
-        bt3 = ttk.Button(bottom_cf, text="Меню", width=10,
-                         command=lambda: controller._show_frame('MainMenu'))
+        bt3 = ttk.Button(bottom_cf, text="Назад", width=10,
+                         command=lambda: controller._show_frame('PreviewForm'))
         bt3.pack(side=tk.RIGHT, padx=15, pady=5)
 
         bt2 = ttk.Button(bottom_cf, text="Очистить", width=10,
@@ -325,6 +284,11 @@ class CreateForm(PaymentFrame):
         row2_cf.pack(side=tk.TOP, fill=tk.X)
         text_cf.pack(side=tk.TOP, fill=tk.X, expand=True, padx=10, pady=5)
 
+    def var_callback(self, *args):
+        print('--------')
+        print(self.sumtotal.get())
+        print('--------')
+
     def _choose_mvz(self, event):
         #self.mvz_sap.config(text=self.mvzSAP[self.mvz_box.current()])
         self.mvz_sap.config(text=self.mvz[self.mvz_current.get()])
@@ -339,6 +303,7 @@ class CreateForm(PaymentFrame):
         self.sumtotal.set('0.00')
         self.nds.set(20)
         self.desc_text.delete("1.0", tk.END)
+        self.plan_date_entry.set_date(datetime.now())
 
 #    def _on_focus_out(self, event):
 #        """ Function to be bind to focus out of self.sum_entry"""
@@ -389,7 +354,7 @@ class CreateForm(PaymentFrame):
                     'Заявка создана'
             )
             self._clear()
-            self.controller._show_frame('MainMenu')
+            self.controller._show_frame('PreviewForm')
         else:
             messagebox.showerror(
                     'Создание заявки',
@@ -420,7 +385,6 @@ class PreviewForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info, mvz,
                  allowed_initiators, **kwargs):
         super().__init__(parent, controller, connection, user_info)
-        self.approveform_bool = isinstance(self, ApproveForm)
         self.mvznames, self.mvzSAP = zip(*[('Все', None),] + mvz)
         self.initiatorsID, self.initiators = zip(*allowed_initiators)
         # Parameters for sorting
@@ -433,7 +397,7 @@ class PreviewForm(PaymentFrame):
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
 
-        main_label = tk.Label(top, text='На утверждении' if self.approveform_bool else 'Просмотр заявок',
+        main_label = tk.Label(top, text='Просмотр заявок',
                               padx=10, font=('Calibri', 10, 'bold'))
         main_label.pack(side=tk.LEFT, expand=False, anchor=tk.NW)
 
@@ -441,71 +405,86 @@ class PreviewForm(PaymentFrame):
 
         top.pack(side=tk.TOP, fill=tk.X, expand=False)
 
-        # Filters for PreviewForm
-        if not self.approveform_bool:
-            filterframe = ttk.LabelFrame(self, text=' Фильтры ', name='filterframe')
+        # Filters
+        filterframe = ttk.LabelFrame(self, text=' Фильтры ', name='filterframe')
 
-            # First Filter Frame with (MVZ, office, contragentID)
-            row1_cf = tk.Frame(filterframe, name='row1_cf', padx=15)
+        # First Filter Frame with (MVZ, office, contragentID)
+        row1_cf = tk.Frame(filterframe, name='row1_cf', padx=15)
 
-            self.initiator_label = tk.Label(row1_cf, text='Инициатор', padx=10)
-            self.initiator_box = ttk.Combobox(row1_cf, width=35, state='readonly')
-            self.initiator_box['values'] = self.initiators
-            self.initiator_box.set('Все')
+        self.initiator_label = tk.Label(row1_cf, text='Инициатор', padx=10)
+        self.initiator_box = ttk.Combobox(row1_cf, width=35, state='readonly')
+        self.initiator_box['values'] = self.initiators
+        self.initiator_box.set('Все')
 
-            self.mvz_label = tk.Label(row1_cf, text='МВЗ', padx=10)
-            self.mvz_box = ttk.Combobox(row1_cf, width=35, state='readonly')
-            self.mvz_box['values'] = self.mvznames
-            self.mvz_box.set('Все')
+        self.mvz_label = tk.Label(row1_cf, text='МВЗ', padx=10)
+        self.mvz_box = ttk.Combobox(row1_cf, width=35, state='readonly')
+        self.mvz_box['values'] = self.mvznames
+        self.mvz_box.set('Все')
 
-            self.office_label = tk.Label(row1_cf, text='Офис', padx=20)
-            self.office_box = ttk.Combobox(row1_cf, width=20)
-            self.office_box['values'] = self.mvznames
-            self.office_box.set('Все')
+        self.office_label = tk.Label(row1_cf, text='Офис', padx=20)
+        self.office_box = ttk.Combobox(row1_cf, width=20)
+        self.office_box['values'] = self.mvznames
+        self.office_box.set('Все')
 
-            self.contragent_label = tk.Label(row1_cf, text='Контрагент', padx=20)
-            self.contragent_entry = tk.Entry(row1_cf, width=21)
+        self.contragent_label = tk.Label(row1_cf, text='Контрагент', padx=20)
+        self.contragent_entry = tk.Entry(row1_cf, width=21)
 
-            # Pack row1_cf
-            self._row1_pack()
-            row1_cf.pack(side=tk.TOP, fill=tk.X)
+        # Pack row1_cf
+        self._row1_pack()
+        row1_cf.pack(side=tk.TOP, fill=tk.X)
 
-            # Second Fill Frame with (Plan date, Sum, Tax)
-            row2_cf = tk.Frame(filterframe, name='row2_cf', padx=15)
+        # Second Fill Frame with (Plan date, Sum, Tax)
+        row2_cf = tk.Frame(filterframe, name='row2_cf', padx=15)
 
-            self.plan_date_label_m = tk.Label(row2_cf, text='Плановая дата:  месяц', padx=10)
-            self.plan_date_entry_m = ttk.Combobox(row2_cf, width=15, state='readonly')
-            self.plan_date_entry_m['values'] = self.month
-            self.plan_date_label_y = tk.Label(row2_cf, text='год', padx=20)
-            self.year = tk.IntVar()
-            self.year.set(datetime.now().year)
-            self.plan_date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2029,
-                                                font=('Calibri', 11), textvariable=self.year)
+        self.plan_date_label_m = tk.Label(row2_cf, text='Плановая дата:  месяц', padx=10)
+        self.plan_date_entry_m = ttk.Combobox(row2_cf, width=15, state='readonly')
+        self.plan_date_entry_m['values'] = self.month
+        self.plan_date_label_y = tk.Label(row2_cf, text='год', padx=20)
+        self.year = tk.IntVar()
+        self.year.set(datetime.now().year)
+        self.plan_date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2029,
+                                            font=('Calibri', 11), textvariable=self.year)
 
-            self.sum_label_from = tk.Label(row2_cf, text='Сумма без НДС: от')
-            self.sumtotal_from = tk.DoubleVar()
-            self.sumtotal_from.set('0.00')
-            vcmd = (self.register(self._validate_sum))
-            self.sum_entry_from = tk.Entry(row2_cf, width=10, textvariable=self.sumtotal_from,
-                            validate='all', validatecommand=(vcmd, '%P'))
-            self.sum_label_to = tk.Label(row2_cf, text='до')
-            self.sumtotal_to = tk.DoubleVar()
-            self.sumtotal_to.set('')
-            self.sum_entry_to = tk.Entry(row2_cf, width=10, textvariable=self.sumtotal_to,
-                            validate='all', validatecommand=(vcmd, '%P'))
+        self.sum_label_from = tk.Label(row2_cf, text='Сумма без НДС: от')
+        self.sumtotal_from = tk.DoubleVar()
+        self.sumtotal_from.set('0.00')
+        vcmd = (self.register(self._validate_sum))
+        self.sum_entry_from = tk.Entry(row2_cf, width=10, textvariable=self.sumtotal_from,
+                        validate='all', validatecommand=(vcmd, '%P')
+                        )
+        self.sum_label_to = tk.Label(row2_cf, text='до')
+        self.sumtotal_to = tk.DoubleVar()
+        self.sumtotal_to.set('')
+        self.sum_entry_to = tk.Entry(row2_cf, width=10, textvariable=self.sumtotal_to,
+                        validate='all', validatecommand=(vcmd, '%P'))
 
-            self.nds_label = tk.Label(row2_cf, text='НДС', padx=20)
-            self.nds = tk.IntVar()
-            self.nds.set(-1)
-            self.ndsall = ttk.Radiobutton(row2_cf, text="Любой", variable=self.nds, value=-1)
-            self.nds20 = ttk.Radiobutton(row2_cf, text="20 %", variable=self.nds, value=20)
-            self.nds7 = ttk.Radiobutton(row2_cf, text="7 %", variable=self.nds, value=7)
-            self.nds0 = ttk.Radiobutton(row2_cf, text="0 %", variable=self.nds, value=0)
+        self.nds_label = tk.Label(row2_cf, text='НДС', padx=20)
+        self.nds = tk.IntVar()
+        self.nds.set(-1)
+        self.ndsall = ttk.Radiobutton(row2_cf, text="Любой", variable=self.nds, value=-1)
+        self.nds20 = ttk.Radiobutton(row2_cf, text="20 %", variable=self.nds, value=20)
+        self.nds7 = ttk.Radiobutton(row2_cf, text="7 %", variable=self.nds, value=7)
+        self.nds0 = ttk.Radiobutton(row2_cf, text="0 %", variable=self.nds, value=0)
 
-            # Pack row1_cf
-            self._row2_pack()
-            row2_cf.pack(side=tk.TOP, fill=tk.X)
-            filterframe.pack(side=tk.TOP, fill=tk.X, expand=False, padx=10, pady=5)
+        # Pack row2_cf
+        self._row2_pack()
+        row2_cf.pack(side=tk.TOP, fill=tk.X)
+        filterframe.pack(side=tk.TOP, fill=tk.X, expand=False, padx=10, pady=5)
+
+        # Third Fill Frame (checkbox + button to apply filter)
+        row3_cf = tk.Frame(filterframe, name='row3_cf', padx=15)
+
+        self.show_for_approve = tk.IntVar()
+        c = tk.Checkbutton(row3_cf, text="Показать заявки на утверждение (без фильтров)",
+                           variable=self.show_for_approve)
+
+        bt = ttk.Button(row3_cf, text="Применить фильтр", width=20,
+                         command=self._refresh)
+
+        # Pack row3_cf
+        c.pack(in_=row3_cf, side=tk.LEFT)
+        bt.pack(side=tk.RIGHT, padx=10, pady=10)
+        row3_cf.pack(side=tk.TOP, fill=tk.X)
 
         # Text Frame
         preview_cf = ttk.LabelFrame(self, text=' Заявки ', name='preview_cf')
@@ -524,17 +503,21 @@ class PreviewForm(PaymentFrame):
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
 
-        bt3 = ttk.Button(bottom_cf, text="Меню", width=10, command=lambda: controller._show_frame('MainMenu'))
-        bt3.pack(side=tk.RIGHT, padx=15, pady=5)
+        bt1 = ttk.Button(bottom_cf, text="Создать", width=10, style='ButtonGreen.TButton',
+                         command=lambda: controller._show_frame('CreateForm'))
+        bt1.pack(side=tk.LEFT, padx=10, pady=10)
 
-        bt2 = ttk.Button(bottom_cf, text="Подробно", width=10,
+        bt2 = ttk.Button(bottom_cf, text="Отменить", width=10, style='ButtonRed.TButton',
+                         command=lambda: controller._show_frame('DiscardForm'))
+        bt2.pack(side=tk.LEFT, padx=10, pady=10)
+
+        bt4 = ttk.Button(bottom_cf, text="Выход", width=10,
+                         command=controller.destroy)
+        bt4.pack(side=tk.RIGHT, padx=10, pady=10)
+
+        bt3 = ttk.Button(bottom_cf, text="Подробно", width=10,
                          command=self._show_detail)
-        bt2.pack(side=tk.RIGHT, padx=15, pady=5)
-
-        if not self.approveform_bool:
-            bt1 = ttk.Button(bottom_cf, text="Обновить", width=10,
-                             command=self._refresh)
-            bt1.pack(side=tk.RIGHT, padx=15, pady=5)
+        bt3.pack(side=tk.RIGHT, padx=10, pady=10)
 
         # Pack frames
         bottom_cf.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
@@ -553,8 +536,7 @@ class PreviewForm(PaymentFrame):
         if isinstance(self.headings, dict):
             self.table["columns"] = tuple(self.headings.keys())
             self.table["displaycolumns"] = tuple(k for k in self.headings.keys()
-                if k not in ('НДС', 'Описание', 'Дата/время создания')
-                and not (self.approveform_bool and k in ('Статус', 'Утверждающий')))
+                if k not in ('НДС', 'Описание', 'Дата/время создания'))
             for head, width in self.headings.items():
                 self.table.heading(head, text=head, anchor=tk.CENTER)
                 self.table.column(head, width=width, anchor=tk.CENTER)
@@ -619,7 +601,8 @@ class PreviewForm(PaymentFrame):
                    'plan_date_y': self.year.get() if self.plan_date_entry_y.get() else 0.,
                    'sumtotal_from': self.sumtotal_from.get() if self.sum_entry_from.get() else 0.,
                    'sumtotal_to': self.sumtotal_to.get() if self.sum_entry_to.get() else 0.,
-                   'nds':  self.nds.get()
+                   'nds':  self.nds.get(),
+                   'just_for_approval': self.show_for_approve.get()
                    }
         self.rows = self.conn.get_paymentslist(self.user_info, **filters)
         self._show_rows(self.rows)
@@ -632,14 +615,12 @@ class PreviewForm(PaymentFrame):
                 newlevel = tk.Toplevel(self.parent)
                 newlevel.title('Заявка детально')
                 newlevel.iconbitmap('../resources/preview.ico')
-                if self.approveform_bool:
-                    ApproveConfirmation(newlevel, self, self.conn, self.userID,
-                                        self.headings,
-                                        self.table.item(curRow).get('values'))
-                else:
-                    DetailedPreview(newlevel, self, self.conn, self.userID,
-                                    self.headings,
-                                    self.table.item(curRow).get('values'))
+#                ApproveConfirmation(newlevel, self, self.conn, self.userID,
+#                                    self.headings,
+#                                    self.table.item(curRow).get('values'))
+                DetailedPreview(newlevel, self, self.conn, self.userID,
+                                self.headings,
+                                self.table.item(curRow).get('values'))
                 newlevel.resizable(width=False, height=False)
                 self._center_popup_window(newlevel, 500, 400)
                 newlevel.focus()
@@ -698,8 +679,8 @@ class DiscardForm(PaymentFrame):
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
 
-        bt2 = ttk.Button(bottom_cf, text="Меню", width=10,
-                         command=lambda: controller._show_frame('MainMenu'))
+        bt2 = ttk.Button(bottom_cf, text="Назад", width=10,
+                         command=lambda: controller._show_frame('PreviewForm'))
         bt2.pack(side=tk.RIGHT, padx=15, pady=5)
 
         bt1 = ttk.Button(bottom_cf, text="Отменить", width=10,
@@ -745,16 +726,6 @@ class DiscardForm(PaymentFrame):
     def _refresh(self):
         self.discardbox.delete(0, 'end')
         self.discardbox.insert('end', *self._get_list_to_discard())
-
-
-class ApproveForm(PreviewForm):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def _refresh(self):
-        self.table.delete(*self.table.get_children())
-        rows = self.conn.get_approvelist(self.userID)
-        self._show_rows(rows)
 
 
 class DetailedRequest(tk.Frame):
@@ -881,7 +852,7 @@ if __name__ == '__main__':
             app = PaymentApp(connection=sql,
                              user_info=UserInfo(76, 'TestName', 1, 1),
                              mvz=[('20511RC191', '20511RC191'), ('40900A2595', '40900A2595')],
-                             allowed_initiators=[(1, 2), (3, 4)])
+                             allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)])
             app.mainloop()
         except Exception as e:
             print(e)

@@ -93,8 +93,8 @@ class DBConnect(object):
     def get_approvals(self, paymentID):
         query = '''
         select pappr.ShortUserName as approval,
-        case appr.is_approved when 0 then 'Отклонил(-а)'
-                              when 1 then 'Утвердил(-а)'
+        case appr.is_approved when 0 then 'Отклонил(-а) ' + CONVERT(nvarchar, date_modified, 20)
+                              when 1 then 'Утвердил(-а) ' + CONVERT(nvarchar, date_modified, 20)
                               else '' end as status
         from payment.PaymentsApproval appr
             join payment.People pappr on appr.UserID = pappr.UserID
@@ -145,7 +145,8 @@ class DBConnect(object):
         return self.__cursor.fetchall()
 
     def get_paymentslist(self, user_info, initiator, mvz, office, contragent,
-                         plan_date_m, plan_date_y, sumtotal_from, sumtotal_to, nds):
+                         plan_date_m, plan_date_y, sumtotal_from, sumtotal_to,
+                         nds, just_for_approval):
         """ Generate query according to user's acces type and filters.
         """
         query = '''
@@ -165,12 +166,12 @@ class DBConnect(object):
                                            and appr.is_active_approval = 1
         left join payment.People pappr on appr.UserID = pappr.UserID
         where 1=1
-        '''.format(plan_date_y)
+        '''
         if not user_info.isSuperUser:
-            query += 'and (UserID = {0} or exists(select * from payment.PaymentsApproval _appr \
+            query += 'and (pl.UserID = {0} or exists(select * from payment.PaymentsApproval _appr \
                     where pl.ID = _appr.PaymentID and _appr.UserID = {0}))\n'.format(user_info.UserID)
         if initiator:
-            query += 'and UserID = {}\n'.format(initiator)
+            query += 'and pl.UserID = {}\n'.format(initiator)
         if mvz:
             query += 'and MVZ = {}\n'.format(mvz)
         if office:
@@ -187,6 +188,7 @@ class DBConnect(object):
             query += 'and SumNoTax <= {}\n'.format(sumtotal_from)
         if not nds == -1:
             query += 'and Tax = {}\n'.format(nds)
+        query += 'order by 4 DESC'
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
