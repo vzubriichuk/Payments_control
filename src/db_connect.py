@@ -104,33 +104,13 @@ class DBConnect(object):
         self.__cursor.execute(query, paymentID)
         return self.__cursor.fetchall()
 
-    def get_approvelist(self, userID):
-        query = '''
-        select pl.ID, ShortUserName, cast(date_created as date) as date_created,
-           cast(date_created as smalldatetime) as datetime_created,
-           MVZ, OfficeID, isnull(ContragentID, '') as ContragentID, date_planed,
-           SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
-           p.ValueName as StatusName, pl.Description,
-           NULL as [Утверждающий]
-        from payment.PaymentsList pl
-        join payment.PaymentsApproval appr on pl.ID = appr.PaymentID
-                                           and appr.is_active_approval = 1
-                                           and appr.UserID = ?
-        join payment.People pp on pl.UserID = pp.UserID
-        join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
-                                    and p.idParams = 2
-                                    and p.Enabled = 1
-                                    and pl.StatusID = 1
-            '''
-        self.__cursor.execute(query, userID)
-        res = self.__cursor.fetchall()
-        return res
-
     def get_discardlist(self, userID):
         query = '''
-        select ID, cast(date_created as date) as date_created,
-               MVZ, OfficeID, date_planed, SumNoTax,
-               LEFT(Description, 50) + IIF(LEN(Description) > 50, ' ...', '') as ShortDesc
+        select ID as ID,
+           'Лог-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(ID as varchar(7)) as Num,
+           cast(date_created as date) as date_created, '' as CSP,
+           MVZ, OfficeID, date_planed, SumNoTax,
+           LEFT(Description, 50) + IIF(LEN(Description) > 50, ' ...', '') as ShortDesc
         from payment.PaymentsList
         where StatusID = 1 and UserID = ?
         '''
@@ -144,17 +124,26 @@ class DBConnect(object):
                                order by FullName")
         return self.__cursor.fetchall()
 
+    def get_OKPO(self):
+        self.__cursor.execute("select top 20 pac.ValueProperty as OKPO, a.name \
+                    from CB.dbo.PropertyAdressChar pac \
+                        join CB.dbo.Adress a with(nolock) on pac.AdressID = a.ID \
+                    where PropertyID = 2")
+        return self.__cursor.fetchall()
+
     def get_paymentslist(self, user_info, initiator, mvz, office, contragent,
                          plan_date_m, plan_date_y, sumtotal_from, sumtotal_to,
                          nds, just_for_approval):
         """ Generate query according to user's acces type and filters.
         """
         query = '''
-        select pl.ID, pp.ShortUserName, cast(date_created as date) as date_created,
-           cast(date_created as smalldatetime) as datetime_created,
+        select pl.ID as ID, pl.UserID as InitiatorID,
+           'Лог-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.ID as varchar(7)) as Num,
+           pp.ShortUserName, cast(date_created as date) as date_created,
+           cast(date_created as smalldatetime) as datetime_created, '' as CSP,
            MVZ, OfficeID, isnull(ContragentID, '') as ContragentID, date_planed,
            SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
-           p.ValueName as StatusName, pl.Description,
+           p.ValueName as StatusName, p.ValueDescription, pl.Description,
            case when pl.StatusID = 1 then isnull(pappr.ShortUserName, '') else '' end as approval
         from payment.PaymentsList pl
         join payment.People pp on pl.UserID = pp.UserID
@@ -167,28 +156,31 @@ class DBConnect(object):
         left join payment.People pappr on appr.UserID = pappr.UserID
         where 1=1
         '''
-        if not user_info.isSuperUser:
-            query += 'and (pl.UserID = {0} or exists(select * from payment.PaymentsApproval _appr \
-                    where pl.ID = _appr.PaymentID and _appr.UserID = {0}))\n'.format(user_info.UserID)
-        if initiator:
-            query += 'and pl.UserID = {}\n'.format(initiator)
-        if mvz:
-            query += 'and MVZ = {}\n'.format(mvz)
-        if office:
-            query += 'and OfficeID = {}\n'.format(office)
-        if contragent:
-            query += 'and ContragentID = {}\n'.format(contragent)
-        if plan_date_y:
-            query += 'and year(date_planed) = {}\n'.format(plan_date_y)
-        if plan_date_m:
-            query += 'and month(date_planed) = {}\n'.format(plan_date_m)
-        if sumtotal_from:
-            query += 'and SumNoTax >= {}\n'.format(sumtotal_from)
-        if sumtotal_to:
-            query += 'and SumNoTax <= {}\n'.format(sumtotal_from)
-        if not nds == -1:
-            query += 'and Tax = {}\n'.format(nds)
-        query += 'order by 4 DESC'
+        if just_for_approval:
+            query += 'and pl.StatusID = 1 and appr.UserID = {}\n'.format(user_info.UserID)
+        else:
+            if not user_info.isSuperUser:
+                query += 'and (pl.UserID = {0} or exists(select * from payment.PaymentsApproval _appr \
+                        where pl.ID = _appr.PaymentID and _appr.UserID = {0}))\n'.format(user_info.UserID)
+            if initiator:
+                query += 'and pl.UserID = {}\n'.format(initiator)
+            if mvz:
+                query += 'and MVZ = {}\n'.format(mvz)
+            if office:
+                query += 'and OfficeID = {}\n'.format(office)
+            if contragent:
+                query += 'and ContragentID = {}\n'.format(contragent)
+            if plan_date_y:
+                query += 'and year(date_planed) = {}\n'.format(plan_date_y)
+            if plan_date_m:
+                query += 'and month(date_planed) = {}\n'.format(plan_date_m)
+            if sumtotal_from:
+                query += 'and SumNoTax >= {}\n'.format(sumtotal_from)
+            if sumtotal_to:
+                query += 'and SumNoTax <= {}\n'.format(sumtotal_from)
+            if not nds == -1:
+                query += 'and Tax = {}\n'.format(nds)
+        query += 'order by ID DESC' # the same as created(datetime) DESC
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
@@ -213,8 +205,7 @@ class DBConnect(object):
         SET StatusID = 2
         where ID = ?
         '''
-        discardID = [(dID,) for dID in discardID]
-        self.__cursor.executemany(query, discardID)
+        self.__cursor.execute(query, discardID)
         self.__db.commit()
 
 

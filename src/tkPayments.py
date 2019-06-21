@@ -57,8 +57,7 @@ class PaymentApp(tk.Tk):
         self.iconbitmap('../resources/payment.ico')
         # geometry_storage {Framename:(width, height)}
         self._geometry = {'PreviewForm': (1200, 600),
-                          'CreateForm': (880, 600),
-                          'DiscardForm': (880, 400)}
+                          'CreateForm': (750, 400)}
         # Virtual event for creating request
         self.event_add("<<create>>", "<Control-S>", "<Control-s>",
                        "<Control-Ucircumflex>", "<Control-ucircumflex>",
@@ -116,7 +115,7 @@ class PaymentApp(tk.Tk):
         container.grid_columnconfigure(0, weight=1)
 
         self._frames = {}
-        for F in (PreviewForm, CreateForm, DiscardForm):
+        for F in (PreviewForm, CreateForm):
             frame_name = F.__name__
             frame = F(parent=container, controller=self, **kwargs)
             self._frames[frame_name] = frame
@@ -136,15 +135,22 @@ class PaymentApp(tk.Tk):
 
         self.geometry('{}x{}+{}+{}'.format(w, h, start_x, start_y))
 
+    def _fill_CreateForm(self, МВЗ, Офис, Контрагент, **kwargs):
+        frame = self._frames['CreateForm']
+        frame._fill_from_PreviewForm(МВЗ, Офис, Контрагент)
+
     def _show_frame(self, frame_name):
         """ Show a frame for the given frame name
         """
+        if frame_name == 'CreateForm':
+            self.resizable(width=False, height=False)
+        else:
+            self.resizable(width=True, height=True)
         frame = self._frames[frame_name]
         frame.tkraise()
         self._center_window(*(self._geometry[frame_name]))
         if frame_name in ('PreviewForm'):
             frame._resize_columns()
-        if frame_name in ('DiscardForm', 'PreviewForm'):
             frame._refresh()
         self.active_frame = frame_name
 
@@ -165,12 +171,13 @@ class PaymentFrame(tk.Frame):
         super().__init__(parent)
         self.parent = parent
         self.controller = controller
-        self._shortusername = user_info.ShortUserName
-        self.userID = user_info.UserID
         self.conn = connection
+        self.user_info = user_info
+        # Often used info
+        self.userID = user_info.UserID
 
     def _add_user_label(self, parent):
-        user_label = tk.Label(parent, text=self._shortusername, padx=10)
+        user_label = tk.Label(parent, text=self.user_info.ShortUserName, padx=10)
         user_label.pack(side=tk.RIGHT, anchor=tk.NE)
 
     def _validate_sum(self, sum_entry):
@@ -185,10 +192,12 @@ class PaymentFrame(tk.Frame):
 
 
 class CreateForm(PaymentFrame):
-    def __init__(self, parent, controller, connection, user_info, mvz, **kwargs):
+    def __init__(self, parent, controller, connection, user_info,
+                 mvz, okpo, **kwargs):
         super().__init__(parent, controller, connection, user_info)
         #self.mvznames, self.mvzSAP = zip(*mvz)
         self.mvz = dict(mvz)
+        self.okpo = dict(okpo)
 
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
@@ -199,62 +208,69 @@ class CreateForm(PaymentFrame):
 
         self._add_user_label(top)
 
-        # First Fill Frame with (MVZ, office, contragentID)
+        # First Fill Frame with (MVZ, office)
         row1_cf = tk.Frame(self, name='row1_cf', padx=15)
 
         self.mvz_label = tk.Label(row1_cf, text='МВЗ', padx=10)
-
         self.mvz_current = tk.StringVar()
         #self.mvz_current.set(self.mvznames[0]) # default value
         self.mvz_box = ttk.OptionMenu(row1_cf, self.mvz_current, '', *self.mvz.keys(),
                                       command = self._choose_mvz)
-        self.mvz_box.config(width=35)
-
+        self.mvz_box.config(width=40)
 #        self.mvz_box = ttk.Combobox(row1_cf, width=35)
 #        self.mvz_box['values'] = self.mvznames
 #        self.mvz_box.bind("<<ComboboxSelected>>", self._choose_mvz)
-
-        self.mvz_sap = tk.Label(row1_cf, padx=5, bg='lightgray', width=10)
-
-        self.office_label = tk.Label(row1_cf, text='Офис', padx=20)
+        self.mvz_sap = tk.Label(row1_cf, padx=6, bg='lightgray', width=11)
+        self.office_label = tk.Label(row1_cf, text='Офис', padx=10)
         self.office_box = ttk.Combobox(row1_cf, width=20, state='readonly')
         #self.office_box['values'] = self.mvzSAP
         self.office_box['values'] = list(self.mvz.values())
 
-        self.contragent_label = tk.Label(row1_cf, text='Контрагент', padx=20)
-        self.contragent_entry = tk.Entry(row1_cf, width=21)
-
         # Pack row1_cf
         self._row1_pack()
 
-        # Second Fill Frame with (Plan date, Sum, Tax)
+        # Second Fill Frame with (OKPO, contragent)
         row2_cf = tk.Frame(self, name='row2_cf', padx=15)
 
-        self.plan_date_label = tk.Label(row2_cf, text='Плановая дата', padx=10)
-        self.plan_date_entry = DateEntry(row2_cf, width=12, state='readonly',
-                    font=('Calibri', 10), selectmode='day', borderwidth=2)
+        self.okpo_current = tk.StringVar()
+        self.okpo_label = tk.Label(row2_cf, text='ОКПО', padx=10)
+        self.okpo_box = ttk.Combobox(row2_cf, textvariable=self.okpo_current, width=15,)
+        self.okpo_box.bind("<<ComboboxSelected>>", self._choose_contragent)
+        self.okpo_box['values'] = list(self.okpo.keys())
+        self.contragent_label = tk.Label(row2_cf, text='Контрагент', padx=10)
+        self.contragent_entry = tk.Label(row2_cf, padx=5, bg='lightgray',
+                                         width=22, anchor=tk.W)
 
-        self.sum_label = tk.Label(row2_cf, text='Сумма без НДС', padx=20)
+        # Pack row2_cf
+        self._row2_pack()
+
+        # Second Fill Frame with (Plan date, Sum, Tax)
+        row3_cf = tk.Frame(self, name='row3_cf', padx=15)
+
+        self.plan_date_label = tk.Label(row3_cf, text='Плановая дата', padx=10)
+        self.plan_date_entry = DateEntry(row3_cf, width=12, state='readonly',
+                    font=('Calibri', 10), selectmode='day', borderwidth=2)
+        self.sum_label = tk.Label(row3_cf, text='Сумма без НДС', padx=20)
         self.sumtotal = tk.DoubleVar()
         self.sumtotal.trace("w", self.var_callback)
         self.sumtotal.set('0.00')
         vcmd = (self.register(self._validate_sum))
-        self.sum_entry = tk.Entry(row2_cf, width=20, textvariable=self.sumtotal,
+        self.sum_entry = tk.Entry(row3_cf, width=20, textvariable=self.sumtotal,
                         validate='all', validatecommand=(vcmd, '%P')
                         )
         # Alternative validation
-        #self.sum_entry = tk.Entry(row2_cf, width=20, textvariable=self.sumtotal)
+        #self.sum_entry = tk.Entry(row3_cf, width=20, textvariable=self.sumtotal)
         #self.sum_entry.bind("<FocusOut>", self._on_focus_out)
 
-        self.nds_label = tk.Label(row2_cf, text='НДС', padx=20)
+        self.nds_label = tk.Label(row3_cf, text='НДС', padx=20)
         self.nds = tk.IntVar()
         self.nds.set(20)
-        self.nds20 = ttk.Radiobutton(row2_cf, text="20 %", variable=self.nds, value=20)
-        self.nds7 = ttk.Radiobutton(row2_cf, text="7 %", variable=self.nds, value=7)
-        self.nds0 = ttk.Radiobutton(row2_cf, text="0 %", variable=self.nds, value=0)
+        self.nds20 = ttk.Radiobutton(row3_cf, text="20 %", variable=self.nds, value=20)
+        self.nds7 = ttk.Radiobutton(row3_cf, text="7 %", variable=self.nds, value=7)
+        self.nds0 = ttk.Radiobutton(row3_cf, text="0 %", variable=self.nds, value=0)
 
-        # Pack row2_cf
-        self._row2_pack()
+        # Pack row3_cf
+        self._row3_pack()
 
         # Text Frame
         text_cf = ttk.LabelFrame(self, text=' Описание заявки ', name='text_cf')
@@ -267,21 +283,22 @@ class CreateForm(PaymentFrame):
 
         bt3 = ttk.Button(bottom_cf, text="Назад", width=10,
                          command=lambda: controller._show_frame('PreviewForm'))
-        bt3.pack(side=tk.RIGHT, padx=15, pady=5)
+        bt3.pack(side=tk.RIGHT, padx=15, pady=10)
 
         bt2 = ttk.Button(bottom_cf, text="Очистить", width=10,
                          command=self._clear, style='ButtonRed.TButton')
-        bt2.pack(side=tk.RIGHT, padx=15, pady=5)
+        bt2.pack(side=tk.RIGHT, padx=15, pady=10)
 
         bt1 = ttk.Button(bottom_cf, text="Создать", width=10,
                          command=self._create_request, style='ButtonGreen.TButton')
-        bt1.pack(side=tk.RIGHT, padx=15, pady=5)
+        bt1.pack(side=tk.RIGHT, padx=15, pady=10)
 
         # Pack frames
         top.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         bottom_cf.pack(side=tk.BOTTOM, fill=tk.X)
         row1_cf.pack(side=tk.TOP, fill=tk.X)
         row2_cf.pack(side=tk.TOP, fill=tk.X)
+        row3_cf.pack(side=tk.TOP, fill=tk.X)
         text_cf.pack(side=tk.TOP, fill=tk.X, expand=True, padx=10, pady=5)
 
     def var_callback(self, *args):
@@ -293,12 +310,20 @@ class CreateForm(PaymentFrame):
         #self.mvz_sap.config(text=self.mvzSAP[self.mvz_box.current()])
         self.mvz_sap.config(text=self.mvz[self.mvz_current.get()])
 
+    def _choose_contragent(self, event=None):
+        #self.mvz_sap.config(text=self.mvzSAP[self.mvz_box.current()])
+        try:
+            self.contragent_entry.config(text=self.okpo[self.okpo_current.get()])
+        except KeyError:
+            pass
+
     def _clear(self):
         #self.mvz_box.set('')
         self.mvz_current.set('')
         self.mvz_sap.config(text='')
         self.office_box.set('')
-        self.contragent_entry.delete(0, tk.END)
+        self.okpo_box.set('')
+        self.contragent_entry.config(text='')
         self.plan_date_entry.delete(0, tk.END)
         self.sumtotal.set('0.00')
         self.nds.set(20)
@@ -316,15 +341,6 @@ class CreateForm(PaymentFrame):
 #                    'Некорректная сумма',
 #                    'Введена некорретная сумма!'
 #                    )
-
-    def _validate_plan_date(self):
-        date = self.plan_date_entry.get()
-        try:
-            date = datetime.strptime(date, '%d.%m.%Y')
-        except ValueError:
-            date = datetime.strptime(date, '%d.%m.%y')
-        today = datetime.now()
-        return date > today
 
     def _create_request(self):
         if not self.mvz_current.get():
@@ -361,16 +377,30 @@ class CreateForm(PaymentFrame):
                     'Произошла ошибка при создании заявки'
             )
 
+    def _fill_from_PreviewForm(self, mvz, office, contragent):
+        """ When button "Создать из заявки" from PreviewForm is activated,
+        fill some fields taken from choosed in PreviewForm request.
+        """
+        self.mvz_sap.config(text=mvz)
+        self.mvz_current.set(next((name for name, mvzSAP in self.mvz.items() if mvzSAP == str(mvz)),
+                                  ''))
+        self.office_box.set(office)
+
+
     def _row1_pack(self):
-        self.mvz_label.pack(side=tk.LEFT)
+        self.mvz_label.pack(side=tk.LEFT, pady=5)
         self.mvz_box.pack(side=tk.LEFT, padx=5, pady=5)
-        self.mvz_sap.pack(side=tk.LEFT)
-        self.contragent_entry.pack(side=tk.RIGHT, padx=10, pady=5)
-        self.contragent_label.pack(side=tk.RIGHT)
+        self.mvz_sap.pack(side=tk.LEFT, pady=5)
         self.office_box.pack(side=tk.RIGHT, padx=5, pady=5)
-        self.office_label.pack(side=tk.RIGHT)
+        self.office_label.pack(side=tk.RIGHT, pady=5)
 
     def _row2_pack(self):
+        self.okpo_label.pack(side=tk.LEFT, pady=5)
+        self.okpo_box.pack(side=tk.LEFT, pady=5)
+        self.contragent_label.pack(side=tk.LEFT, pady=5)
+        self.contragent_entry.pack(side=tk.LEFT, pady=5)
+
+    def _row3_pack(self):
         self.plan_date_label.pack(side=tk.LEFT)
         self.plan_date_entry.pack(side=tk.LEFT, padx=5, pady=5)
         self.nds0.pack(side=tk.RIGHT, padx=7)
@@ -379,6 +409,15 @@ class CreateForm(PaymentFrame):
         self.nds_label.pack(side=tk.RIGHT, padx=5)
         self.sum_entry.pack(side=tk.RIGHT, padx=5, pady=5)
         self.sum_label.pack(side=tk.RIGHT)
+
+    def _validate_plan_date(self):
+        date = self.plan_date_entry.get()
+        try:
+            date = datetime.strptime(date, '%d.%m.%Y')
+        except ValueError:
+            date = datetime.strptime(date, '%d.%m.%y')
+        today = datetime.now()
+        return date > today
 
 
 class PreviewForm(PaymentFrame):
@@ -391,8 +430,6 @@ class PreviewForm(PaymentFrame):
         self.rows = None  # store all rows for sorting and redrawing
         self.sort_reversed_index = None  # reverse sorting for last sorted column
         self.month = list(month_name)
-        # Info for generating get_paymentslist query
-        self.user_info = user_info
 
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
@@ -439,6 +476,7 @@ class PreviewForm(PaymentFrame):
         self.plan_date_label_m = tk.Label(row2_cf, text='Плановая дата:  месяц', padx=10)
         self.plan_date_entry_m = ttk.Combobox(row2_cf, width=15, state='readonly')
         self.plan_date_entry_m['values'] = self.month
+        self.plan_date_entry_m.current(datetime.now().month)
         self.plan_date_label_y = tk.Label(row2_cf, text='год', padx=20)
         self.year = tk.IntVar()
         self.year.set(datetime.now().year)
@@ -491,10 +529,11 @@ class PreviewForm(PaymentFrame):
 
         # column name and width
         #self.headings=('a', 'bb', 'cccc')  # for debug
-        self.headings = {'№': 10, 'Инициатор': 140, 'Дата создания': 100, 'Дата/время создания': 100,
-                    'МВЗ': 60, 'Офис': 100, 'Контрагент': 60, 'Плановая дата': 100,
-                    'Сумма без НДС': 85, 'Сумма с НДС': 85, 'Статус': 30,
-                    'Описание': 120, 'Утверждающий': 120}
+        self.headings = {'ID': 0, 'InitiatorID':0, '№ заявки': 100,
+            'Инициатор': 140, 'Дата создания': 90, 'Дата/время создания': 0,
+            'CSP':60, 'МВЗ': 60, 'Офис': 100, 'Контрагент': 60,
+            'Плановая дата': 90, 'Сумма без НДС': 85, 'Сумма с НДС': 85,
+            'Статус': 40, 'Статус заявки': 0, 'Описание': 0, 'Утверждающий': 120}
 
         self.table = ttk.Treeview(preview_cf, show="headings", selectmode="browse", style="HeaderStyle.Treeview")
         self._init_table(preview_cf)
@@ -503,21 +542,21 @@ class PreviewForm(PaymentFrame):
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
 
-        bt1 = ttk.Button(bottom_cf, text="Создать", width=10, style='ButtonGreen.TButton',
+        bt1 = ttk.Button(bottom_cf, text="Создать", width=10,
                          command=lambda: controller._show_frame('CreateForm'))
         bt1.pack(side=tk.LEFT, padx=10, pady=10)
 
-        bt2 = ttk.Button(bottom_cf, text="Отменить", width=10, style='ButtonRed.TButton',
-                         command=lambda: controller._show_frame('DiscardForm'))
+        bt2 = ttk.Button(bottom_cf, text="Создать из заявки", width=20,
+                         command=self._create_from_current)
         bt2.pack(side=tk.LEFT, padx=10, pady=10)
 
-        bt4 = ttk.Button(bottom_cf, text="Выход", width=10,
+        bt5 = ttk.Button(bottom_cf, text="Выход", width=10,
                          command=controller.destroy)
-        bt4.pack(side=tk.RIGHT, padx=10, pady=10)
+        bt5.pack(side=tk.RIGHT, padx=10, pady=10)
 
-        bt3 = ttk.Button(bottom_cf, text="Подробно", width=10,
+        bt4 = ttk.Button(bottom_cf, text="Подробно", width=10,
                          command=self._show_detail)
-        bt3.pack(side=tk.RIGHT, padx=10, pady=10)
+        bt4.pack(side=tk.RIGHT, padx=10, pady=10)
 
         # Pack frames
         bottom_cf.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
@@ -532,11 +571,21 @@ class PreviewForm(PaymentFrame):
 
         newlevel.geometry('+{}+{}'.format(start_x, start_y))
 
+    def _create_from_current(self):
+        curRow = self.table.focus()
+        if curRow:
+            # extract info to be putted in CreateForm
+            to_fill = dict(zip(self.table["columns"],
+                               self.table.item(curRow).get('values')))
+            self.controller._fill_CreateForm(**to_fill)
+            self.controller._show_frame('CreateForm')
+
     def _init_table(self, parent):
         if isinstance(self.headings, dict):
             self.table["columns"] = tuple(self.headings.keys())
             self.table["displaycolumns"] = tuple(k for k in self.headings.keys()
-                if k not in ('НДС', 'Описание', 'Дата/время создания'))
+                if k not in ('ID', 'НДС', 'Описание', 'Дата/время создания',
+                             'Статус заявки', 'InitiatorID'))
             for head, width in self.headings.items():
                 self.table.heading(head, text=head, anchor=tk.CENTER)
                 self.table.column(head, width=width, anchor=tk.CENTER)
@@ -553,6 +602,7 @@ class PreviewForm(PaymentFrame):
         self.table.tag_configure('Отм.', background='lightgray')
         self.table.tag_configure('Утв.', background='lightgreen')
         self.table.tag_configure('Откл.', background='#f66e6e')
+        self.table.tag_configure('На согл.', background='#ffffc8')
         #self.table.tag_configure('oddrow', background='lightgray')
 
         self.table.bind('<Double-1>', self._show_detail)
@@ -615,12 +665,16 @@ class PreviewForm(PaymentFrame):
                 newlevel = tk.Toplevel(self.parent)
                 newlevel.title('Заявка детально')
                 newlevel.iconbitmap('../resources/preview.ico')
-#                ApproveConfirmation(newlevel, self, self.conn, self.userID,
-#                                    self.headings,
-#                                    self.table.item(curRow).get('values'))
-                DetailedPreview(newlevel, self, self.conn, self.userID,
-                                self.headings,
-                                self.table.item(curRow).get('values'))
+                approval = self.table.item(curRow).get('values')[-1]
+                # check if current user is approval person
+                if self.user_info.ShortUserName == approval:
+                    ApproveConfirmation(newlevel, self, self.conn, self.userID,
+                                        self.headings,
+                                        self.table.item(curRow).get('values'))
+                else:
+                    DetailedPreview(newlevel, self, self.conn, self.userID,
+                                    self.headings,
+                                    self.table.item(curRow).get('values'))
                 newlevel.resizable(width=False, height=False)
                 self._center_popup_window(newlevel, 500, 400)
                 newlevel.focus()
@@ -652,90 +706,17 @@ class PreviewForm(PaymentFrame):
             # tag = (Status,)
             self.table.insert('', tk.END,
                               values=tuple(row),
-                              tags=(row[-3],))
+                              tags=(row[-4],))
 
 
-class DiscardForm(PaymentFrame):
-    def __init__(self, parent, controller, connection, user_info, **kwargs):
-        super().__init__(parent, controller, connection, user_info)
-
-        # Top Frame with description and user name
-        top = tk.Frame(self, name='top_cf', padx=5)
-
-        main_label = tk.Label(top, text='Отмена заявок\nВыделите заявки, '
-         'которые необходимо отменить, и нажмите кнопку "Отменить"',
-         padx=10, justify=tk.LEFT, font=('Calibri', 10, 'bold'))
-        main_label.pack(side=tk.LEFT, expand=False, anchor=tk.NW)
-
-        self._add_user_label(top)
-
-        # Middle Frame
-        discard_f = ttk.LabelFrame(self, text=' Заявки на согласовании ', name='discard_f')
-
-        self.discardbox = tk.Listbox(discard_f, selectmode='multiple')
-        self.discardbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        self.discardID = None  # Name to store ID for discarding
-
-        # Bottom Frame with buttons
-        bottom_cf = tk.Frame(self, name='bottom_cf')
-
-        bt2 = ttk.Button(bottom_cf, text="Назад", width=10,
-                         command=lambda: controller._show_frame('PreviewForm'))
-        bt2.pack(side=tk.RIGHT, padx=15, pady=5)
-
-        bt1 = ttk.Button(bottom_cf, text="Отменить", width=10,
-                         command=self._discard_request)
-        bt1.pack(side=tk.RIGHT, padx=15, pady=5)
-
-        # Pack frames
-        top.pack(side=tk.TOP, fill=tk.X, expand=False)
-        bottom_cf.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
-        discard_f.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=5)
-
-    def _discard_request(self):
-        mboxname = 'Отмена заявки'
-        discardset = self.discardbox.curselection()
-        if not discardset:
-            messagebox.showerror(mboxname, 'Выберите хотя бы одну заявку')
-            return
-        confirmed = messagebox.askyesno(title=mboxname,
-                  message='Вы собираетесь отменить заявок: {}\nПродолжить?'.format(len(discardset)))
-        if confirmed:
-            self.conn.update_discarded(tuple(self.discardID[i] for i in discardset))
-            messagebox.showinfo(
-                    mboxname,
-                    'Заявок отменено: {}'.format(len(discardset))
-            )
-            self._refresh()
-        else:
-            messagebox.showinfo(
-                    mboxname,
-                    'Действие отменено'
-            )
-
-    def _get_list_to_discard(self):
-        discardlist = self.conn.get_discardlist(self.userID)
-        self.discardID = [d[0] for d in discardlist]
-        discardlist = tuple(
-                map(lambda d: '  Заявка №{} от {}, МВЗ: {}, офис: {}, '
-                    'план.дата: {}, сумма: {}, описание: {}'.format(*d),
-                    discardlist
-                    ))
-        return discardlist
-
-    def _refresh(self):
-        self.discardbox.delete(0, 'end')
-        self.discardbox.insert('end', *self._get_list_to_discard())
-
-
-class DetailedRequest(tk.Frame):
+class DetailedPreview(tk.Frame):
     def __init__(self, parent, parentform, conn, userID, head, info):
         super().__init__(parent)
         self.parent = parent
         self.parentform = parentform
         self.conn = conn
         self.approveclass_bool = isinstance(self, ApproveConfirmation)
-        self.paymentID = info[0]
+        self.paymentID, self.initiatorID = info[:2]
         self.userID = userID
 
         # Top Frame with description and user name
@@ -747,7 +728,7 @@ class DetailedRequest(tk.Frame):
         # Add info to table_frame
         fonts = (('Calibri', 12, 'bold'), ('Calibri', 12))
         for row in zip(range(len(head)), zip(head, info)):
-            if row[1][0] not in ('Дата создания', 'Утверждающий'):
+            if row[1][0] not in ('ID', 'Дата создания', 'Утверждающий', 'Статус'):
                 self._newRow(self.table_frame, fonts, *row)
 
         self.appr_label = tk.Label(self.top, text='Утверждающие',
@@ -769,27 +750,33 @@ class DetailedRequest(tk.Frame):
         # Bottom Frame with buttons
         self.bottom = tk.Frame(self, name='bottom')
 
-        bt3 = ttk.Button(self.bottom, text="Закрыть", width=10,
-                         command=self.parent.destroy)
-        bt3.pack(side=tk.RIGHT, padx=15, pady=5)
-
         if self.approveclass_bool:
-            bt2 = ttk.Button(self.bottom, text="Отклонить", width=10,
-                             command=lambda: self._close(False), style='ButtonRed.TButton')
-            bt2.pack(side=tk.RIGHT, padx=15, pady=5)
-
             bt1 = ttk.Button(self.bottom, text="Утвердить", width=10,
                              command=lambda: self._close(True), style='ButtonGreen.TButton')
-            bt1.pack(side=tk.RIGHT, padx=15, pady=5)
+            bt1.pack(side=tk.LEFT, padx=15, pady=5)
 
-    def _pack_frames(self):
-        # Pack frames
-        self.top.pack(side=tk.TOP, fill=tk.X, expand=False)
-        self.bottom.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
-        self.appr_cf.pack(side=tk.TOP, fill=tk.X)
-        self.table_frame.pack()
-        self.appr_label.pack(side=tk.LEFT, expand=False)
-        self.pack()
+            bt2 = ttk.Button(self.bottom, text="Отклонить", width=10,
+                             command=lambda: self._close(False), style='ButtonRed.TButton')
+            bt2.pack(side=tk.LEFT, padx=15, pady=5)
+
+        bt4 = ttk.Button(self.bottom, text="Закрыть", width=10,
+                         command=self.parent.destroy)
+        bt4.pack(side=tk.RIGHT, padx=15, pady=5)
+
+        if self.userID == self.initiatorID:
+            bt3 = ttk.Button(self.bottom, text="Отменить", width=10,
+                             command=self._discard)
+            bt3.pack(side=tk.RIGHT, padx=15, pady=5)
+
+    def _discard(self):
+        mboxname = 'Отмена заявки'
+        confirmed = messagebox.askyesno(title=mboxname,
+                  message='Вы уверены, что хотите отменить заявку?')
+        if confirmed:
+            self.conn.update_discarded(self.paymentID)
+            messagebox.showinfo(mboxname, 'Заявка отменена')
+            self.parentform._refresh()
+            self.parent.destroy()
 
     def _newRow(self, frame, fonts, rowNumber, info):
         """ Adds a new line to the table """
@@ -821,8 +808,17 @@ class DetailedRequest(tk.Frame):
         for col_num, cell in enumerate(info):
             form_column(rowNumber, lineNumber, col_num, cell, fonts)
 
+    def _pack_frames(self):
+        # Pack frames
+        self.top.pack(side=tk.TOP, fill=tk.X, expand=False)
+        self.bottom.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
+        self.appr_cf.pack(side=tk.TOP, fill=tk.X)
+        self.table_frame.pack()
+        self.appr_label.pack(side=tk.LEFT, expand=False)
+        self.pack()
 
-class ApproveConfirmation(DetailedRequest):
+
+class ApproveConfirmation(DetailedPreview):
     def __init__(self, parent, parentform, conn, userID, head, info):
         super().__init__(parent, parentform, conn, userID, head, info)
 
@@ -833,11 +829,6 @@ class ApproveConfirmation(DetailedRequest):
             self.conn.update_confirmed(self.userID, self.paymentID, is_approved)
             self.parentform._refresh()
             self.parent.destroy()
-
-
-class DetailedPreview(DetailedRequest):
-    def __init__(self, parent, parentform, conn, userID, head, info):
-        super().__init__(parent, parentform, conn, userID, head, info)
 
 
 if __name__ == '__main__':
@@ -852,7 +843,9 @@ if __name__ == '__main__':
             app = PaymentApp(connection=sql,
                              user_info=UserInfo(76, 'TestName', 1, 1),
                              mvz=[('20511RC191', '20511RC191'), ('40900A2595', '40900A2595')],
-                             allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)])
+                             allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)],
+                             okpo = [('012345', 'Test1'), ('987654320', 'Test2')]
+                             )
             app.mainloop()
         except Exception as e:
             print(e)

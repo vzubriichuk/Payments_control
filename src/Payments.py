@@ -31,7 +31,8 @@ def main():
                     'mvz': sql.get_MVZ(),
                     'allowed_initiators': sql.get_allowed_initiators(user_info.UserID,
                                                                      user_info.AccessType,
-                                                                     user_info.isSuperUser)
+                                                                     user_info.isSuperUser),
+                    'okpo': sql.get_OKPO()
                     }
             # Run app
             app = tkp.PaymentApp(**refs)
