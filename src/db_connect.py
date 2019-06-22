@@ -177,7 +177,7 @@ class DBConnect(object):
             if sumtotal_from:
                 query += 'and SumNoTax >= {}\n'.format(sumtotal_from)
             if sumtotal_to:
-                query += 'and SumNoTax <= {}\n'.format(sumtotal_from)
+                query += 'and SumNoTax <= {}\n'.format(sumtotal_to)
             if not nds == -1:
                 query += 'and Tax = {}\n'.format(nds)
         query += 'order by ID DESC' # the same as created(datetime) DESC
