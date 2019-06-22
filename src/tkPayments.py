@@ -180,6 +180,21 @@ class PaymentFrame(tk.Frame):
         user_label = tk.Label(parent, text=self.user_info.ShortUserName, padx=10)
         user_label.pack(side=tk.RIGHT, anchor=tk.NE)
 
+    def _on_focus_in_format_sum(self, event):
+        varname = str(event.widget.cget("textvariable"))
+        sum_entry = event.widget.get().replace(' ', '')
+        event.widget.setvar(varname, sum_entry)
+
+    def _on_focus_out_format_sum(self, event):
+        """ Function to be bind to focus out of self.sum_entry"""
+        if not event.widget.get().replace(',', '.'):
+            return
+        sum_entry = float(event.widget.get().replace(',', '.'))
+        varname = str(event.widget.cget("textvariable"))
+        event.widget.setvar(varname, '{:,.2f}'.format(sum_entry)
+                                              .replace(',', ' ')
+                                              .replace('.', ','))
+
     def _validate_sum(self, sum_entry):
         """ Validation of self.sum_entry"""
         sum_entry = sum_entry.replace(',', '.')
@@ -195,7 +210,6 @@ class CreateForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info,
                  mvz, okpo, **kwargs):
         super().__init__(parent, controller, connection, user_info)
-        #self.mvznames, self.mvzSAP = zip(*mvz)
         self.mvz = dict(mvz)
         self.okpo = dict(okpo)
 
@@ -251,17 +265,15 @@ class CreateForm(PaymentFrame):
         self.plan_date_entry = DateEntry(row3_cf, width=12, state='readonly',
                     font=('Calibri', 10), selectmode='day', borderwidth=2)
         self.sum_label = tk.Label(row3_cf, text='Сумма без НДС', padx=20)
-        self.sumtotal = tk.DoubleVar()
-        self.sumtotal.trace("w", self.var_callback)
-        self.sumtotal.set('0.00')
+        self.sumtotal = tk.StringVar()
+        self.sumtotal.set('0,00')
         vcmd = (self.register(self._validate_sum))
-        self.sum_entry = tk.Entry(row3_cf, width=20, textvariable=self.sumtotal,
-                        validate='all', validatecommand=(vcmd, '%P')
-                        )
-        # Alternative validation
-        #self.sum_entry = tk.Entry(row3_cf, width=20, textvariable=self.sumtotal)
-        #self.sum_entry.bind("<FocusOut>", self._on_focus_out)
-
+        self.sum_entry = tk.Entry(row3_cf, name='sum_entry', width=20,
+                                  textvariable=self.sumtotal, validate='all',
+                                  validatecommand=(vcmd, '%P')
+                                  )
+        self.sum_entry.bind("<FocusIn>", self._on_focus_in_format_sum)
+        self.sum_entry.bind("<FocusOut>", self._on_focus_out_format_sum)
         self.nds_label = tk.Label(row3_cf, text='НДС', padx=20)
         self.nds = tk.IntVar()
         self.nds.set(20)
@@ -301,17 +313,10 @@ class CreateForm(PaymentFrame):
         row3_cf.pack(side=tk.TOP, fill=tk.X)
         text_cf.pack(side=tk.TOP, fill=tk.X, expand=True, padx=10, pady=5)
 
-    def var_callback(self, *args):
-        print('--------')
-        print(self.sumtotal.get())
-        print('--------')
-
     def _choose_mvz(self, event):
-        #self.mvz_sap.config(text=self.mvzSAP[self.mvz_box.current()])
         self.mvz_sap.config(text=self.mvz[self.mvz_current.get()])
 
     def _choose_contragent(self, event=None):
-        #self.mvz_sap.config(text=self.mvzSAP[self.mvz_box.current()])
         try:
             self.contragent_entry.config(text=self.okpo[self.okpo_current.get()])
         except KeyError:
@@ -325,22 +330,10 @@ class CreateForm(PaymentFrame):
         self.okpo_box.set('')
         self.contragent_entry.config(text='')
         self.plan_date_entry.delete(0, tk.END)
-        self.sumtotal.set('0.00')
+        self.sumtotal.set('0,00')
         self.nds.set(20)
         self.desc_text.delete("1.0", tk.END)
         self.plan_date_entry.set_date(datetime.now())
-
-#    def _on_focus_out(self, event):
-#        """ Function to be bind to focus out of self.sum_entry"""
-#        sum_entry = self.sum_entry.get().replace(',', '.')
-#        try:
-#            self.sumtotal.set('{:.2f}'.format(float(sum_entry)))
-#        except (TypeError, ValueError):
-#            self.sumtotal.set('0.00')
-#            messagebox.showerror(
-#                    'Некорректная сумма',
-#                    'Введена некорретная сумма!'
-#                    )
 
     def _create_request(self):
         if not self.mvz_current.get():
@@ -359,7 +352,8 @@ class CreateForm(PaymentFrame):
                    'office': self.office_box.current(),
                    'contragent': self.contragent_entry.get() or None,
                    'plan_date': self.plan_date_entry.get(),
-                   'sumtotal': self.sumtotal.get() if self.sum_entry.get() else 0.,
+                   'sumtotal': float(self.sumtotal.get().replace(' ', '').replace(',', '.')
+                                     if self.sum_entry.get() else 0),
                    'nds':  self.nds.get(),
                    'text': self.desc_text.get("1.0", tk.END)
                    }
@@ -482,20 +476,22 @@ class PreviewForm(PaymentFrame):
         self.year.set(datetime.now().year)
         self.plan_date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2029,
                                             font=('Calibri', 11), textvariable=self.year)
-
         self.sum_label_from = tk.Label(row2_cf, text='Сумма без НДС: от')
-        self.sumtotal_from = tk.DoubleVar()
-        self.sumtotal_from.set('0.00')
+        self.sumtotal_from = tk.StringVar()
+        self.sumtotal_from.set('0,00')
         vcmd = (self.register(self._validate_sum))
-        self.sum_entry_from = tk.Entry(row2_cf, width=10, textvariable=self.sumtotal_from,
+        self.sum_entry_from = tk.Entry(row2_cf, width=12, textvariable=self.sumtotal_from,
                         validate='all', validatecommand=(vcmd, '%P')
                         )
+        self.sum_entry_from.bind("<FocusIn>", self._on_focus_in_format_sum)
+        self.sum_entry_from.bind("<FocusOut>", self._on_focus_out_format_sum)
         self.sum_label_to = tk.Label(row2_cf, text='до')
-        self.sumtotal_to = tk.DoubleVar()
+        self.sumtotal_to = tk.StringVar()
         self.sumtotal_to.set('')
-        self.sum_entry_to = tk.Entry(row2_cf, width=10, textvariable=self.sumtotal_to,
+        self.sum_entry_to = tk.Entry(row2_cf, width=12, textvariable=self.sumtotal_to,
                         validate='all', validatecommand=(vcmd, '%P'))
-
+        self.sum_entry_to.bind("<FocusIn>", self._on_focus_in_format_sum)
+        self.sum_entry_to.bind("<FocusOut>", self._on_focus_out_format_sum)
         self.nds_label = tk.Label(row2_cf, text='НДС', padx=20)
         self.nds = tk.IntVar()
         self.nds.set(-1)
@@ -649,8 +645,10 @@ class PreviewForm(PaymentFrame):
                    'contragent': self.contragent_entry.get() or None,
                    'plan_date_m': self.plan_date_entry_m.current(),
                    'plan_date_y': self.year.get() if self.plan_date_entry_y.get() else 0.,
-                   'sumtotal_from': self.sumtotal_from.get() if self.sum_entry_from.get() else 0.,
-                   'sumtotal_to': self.sumtotal_to.get() if self.sum_entry_to.get() else 0.,
+                   'sumtotal_from': float(self.sumtotal_from.get().replace(' ', '').replace(',', '.')
+                                          if self.sum_entry_from.get() else 0),
+                   'sumtotal_to': float(self.sumtotal_to.get().replace(' ', '').replace(',', '.')
+                                        if self.sum_entry_to.get() else 0),
                    'nds':  self.nds.get(),
                    'just_for_approval': self.show_for_approve.get()
                    }
@@ -849,4 +847,5 @@ if __name__ == '__main__':
             app.mainloop()
         except Exception as e:
             print(e)
+            raise
     input('Press Enter...')
