@@ -50,6 +50,12 @@ class AccessError(tk.Tk):
         self.destroy()
 
 
+class StringSumVar(tk.StringVar):
+    """ Contains function that returns var formatted in a such way, that
+    it can be converted into a float without an error"""
+    def get_float_form(self, *args, **kwargs):
+        return super().get(*args, **kwargs).replace(' ', '').replace(',', '.')
+
 class PaymentApp(tk.Tk):
     def __init__(self, **kwargs):
         super().__init__()
@@ -265,7 +271,7 @@ class CreateForm(PaymentFrame):
         self.plan_date_entry = DateEntry(row3_cf, width=12, state='readonly',
                     font=('Calibri', 10), selectmode='day', borderwidth=2)
         self.sum_label = tk.Label(row3_cf, text='Сумма без НДС', padx=20)
-        self.sumtotal = tk.StringVar()
+        self.sumtotal = StringSumVar()
         self.sumtotal.set('0,00')
         vcmd = (self.register(self._validate_sum))
         self.sum_entry = tk.Entry(row3_cf, name='sum_entry', width=20,
@@ -350,9 +356,9 @@ class CreateForm(PaymentFrame):
             return
         request = {'mvz': self.mvz_sap.cget('text'),
                    'office': self.office_box.current(),
-                   'contragent': self.contragent_entry.get() or None,
+                   'contragent': self.contragent_entry.cget('text') or None,
                    'plan_date': self.plan_date_entry.get(),
-                   'sumtotal': float(self.sumtotal.get().replace(' ', '').replace(',', '.')
+                   'sumtotal': float(self.sumtotal.get_float_form()
                                      if self.sum_entry.get() else 0),
                    'nds':  self.nds.get(),
                    'text': self.desc_text.get("1.0", tk.END)
@@ -477,7 +483,7 @@ class PreviewForm(PaymentFrame):
         self.plan_date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2029,
                                             font=('Calibri', 11), textvariable=self.year)
         self.sum_label_from = tk.Label(row2_cf, text='Сумма без НДС: от')
-        self.sumtotal_from = tk.StringVar()
+        self.sumtotal_from = StringSumVar()
         self.sumtotal_from.set('0,00')
         vcmd = (self.register(self._validate_sum))
         self.sum_entry_from = tk.Entry(row2_cf, width=12, textvariable=self.sumtotal_from,
@@ -486,7 +492,7 @@ class PreviewForm(PaymentFrame):
         self.sum_entry_from.bind("<FocusIn>", self._on_focus_in_format_sum)
         self.sum_entry_from.bind("<FocusOut>", self._on_focus_out_format_sum)
         self.sum_label_to = tk.Label(row2_cf, text='до')
-        self.sumtotal_to = tk.StringVar()
+        self.sumtotal_to = StringSumVar()
         self.sumtotal_to.set('')
         self.sum_entry_to = tk.Entry(row2_cf, width=12, textvariable=self.sumtotal_to,
                         validate='all', validatecommand=(vcmd, '%P'))
@@ -645,9 +651,9 @@ class PreviewForm(PaymentFrame):
                    'contragent': self.contragent_entry.get() or None,
                    'plan_date_m': self.plan_date_entry_m.current(),
                    'plan_date_y': self.year.get() if self.plan_date_entry_y.get() else 0.,
-                   'sumtotal_from': float(self.sumtotal_from.get().replace(' ', '').replace(',', '.')
+                   'sumtotal_from': float(self.sumtotal_from.get_float_form()
                                           if self.sum_entry_from.get() else 0),
-                   'sumtotal_to': float(self.sumtotal_to.get().replace(' ', '').replace(',', '.')
+                   'sumtotal_to': float(self.sumtotal_to.get_float_form()
                                         if self.sum_entry_to.get() else 0),
                    'nds':  self.nds.get(),
                    'just_for_approval': self.show_for_approve.get()
