@@ -56,6 +56,7 @@ class StringSumVar(tk.StringVar):
     def get_float_form(self, *args, **kwargs):
         return super().get(*args, **kwargs).replace(' ', '').replace(',', '.')
 
+
 class PaymentApp(tk.Tk):
     def __init__(self, **kwargs):
         super().__init__()
@@ -451,17 +452,14 @@ class PreviewForm(PaymentFrame):
         self.initiator_label = tk.Label(row1_cf, text='Инициатор', padx=10)
         self.initiator_box = ttk.Combobox(row1_cf, width=35, state='readonly')
         self.initiator_box['values'] = self.initiators
-        self.initiator_box.set('Все')
 
         self.mvz_label = tk.Label(row1_cf, text='МВЗ', padx=10)
         self.mvz_box = ttk.Combobox(row1_cf, width=35, state='readonly')
         self.mvz_box['values'] = self.mvznames
-        self.mvz_box.set('Все')
 
         self.office_label = tk.Label(row1_cf, text='Офис', padx=20)
         self.office_box = ttk.Combobox(row1_cf, width=20)
         self.office_box['values'] = self.mvznames
-        self.office_box.set('Все')
 
         self.contragent_label = tk.Label(row1_cf, text='Контрагент', padx=20)
         self.contragent_entry = tk.Entry(row1_cf, width=21)
@@ -476,15 +474,12 @@ class PreviewForm(PaymentFrame):
         self.plan_date_label_m = tk.Label(row2_cf, text='Плановая дата:  месяц', padx=10)
         self.plan_date_entry_m = ttk.Combobox(row2_cf, width=15, state='readonly')
         self.plan_date_entry_m['values'] = self.month
-        self.plan_date_entry_m.current(datetime.now().month)
         self.plan_date_label_y = tk.Label(row2_cf, text='год', padx=20)
         self.year = tk.IntVar()
-        self.year.set(datetime.now().year)
         self.plan_date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2029,
                                             font=('Calibri', 11), textvariable=self.year)
         self.sum_label_from = tk.Label(row2_cf, text='Сумма без НДС: от')
         self.sumtotal_from = StringSumVar()
-        self.sumtotal_from.set('0,00')
         vcmd = (self.register(self._validate_sum))
         self.sum_entry_from = tk.Entry(row2_cf, width=12, textvariable=self.sumtotal_from,
                         validate='all', validatecommand=(vcmd, '%P')
@@ -493,14 +488,12 @@ class PreviewForm(PaymentFrame):
         self.sum_entry_from.bind("<FocusOut>", self._on_focus_out_format_sum)
         self.sum_label_to = tk.Label(row2_cf, text='до')
         self.sumtotal_to = StringSumVar()
-        self.sumtotal_to.set('')
         self.sum_entry_to = tk.Entry(row2_cf, width=12, textvariable=self.sumtotal_to,
                         validate='all', validatecommand=(vcmd, '%P'))
         self.sum_entry_to.bind("<FocusIn>", self._on_focus_in_format_sum)
         self.sum_entry_to.bind("<FocusOut>", self._on_focus_out_format_sum)
         self.nds_label = tk.Label(row2_cf, text='НДС', padx=20)
         self.nds = tk.IntVar()
-        self.nds.set(-1)
         self.ndsall = ttk.Radiobutton(row2_cf, text="Любой", variable=self.nds, value=-1)
         self.nds20 = ttk.Radiobutton(row2_cf, text="20 %", variable=self.nds, value=20)
         self.nds7 = ttk.Radiobutton(row2_cf, text="7 %", variable=self.nds, value=7)
@@ -518,13 +511,19 @@ class PreviewForm(PaymentFrame):
         c = tk.Checkbutton(row3_cf, text="Показать заявки на утверждение (без фильтров)",
                            variable=self.show_for_approve)
 
-        bt = ttk.Button(row3_cf, text="Применить фильтр", width=20,
+        bt3_1 = ttk.Button(row3_cf, text="Применить фильтр", width=20,
                          command=self._refresh)
+        bt3_2 = ttk.Button(row3_cf, text="Очистить фильтр", width=20,
+                         command=self._clear_filters)
 
         # Pack row3_cf
         c.pack(in_=row3_cf, side=tk.LEFT)
-        bt.pack(side=tk.RIGHT, padx=10, pady=10)
+        bt3_2.pack(side=tk.RIGHT, padx=10, pady=10)
+        bt3_1.pack(side=tk.RIGHT, padx=10, pady=10)
         row3_cf.pack(side=tk.TOP, fill=tk.X)
+
+        # Set all filters to default
+        self._clear_filters()
 
         # Text Frame
         preview_cf = ttk.LabelFrame(self, text=' Заявки ', name='preview_cf')
@@ -572,6 +571,17 @@ class PreviewForm(PaymentFrame):
         start_y = int((screen_height/2) - (h/2))
 
         newlevel.geometry('+{}+{}'.format(start_x, start_y))
+
+    def _clear_filters(self):
+        self.initiator_box.set('Все')
+        self.mvz_box.set('Все')
+        self.office_box.set('Все')
+        self.plan_date_entry_m.current(datetime.now().month)
+        self.year.set(datetime.now().year)
+        self.sumtotal_from.set('0,00')
+        self.sumtotal_to.set('')
+        self.nds.set(-1)
+        self.show_for_approve.set(0)
 
     def _create_from_current(self):
         curRow = self.table.focus()

@@ -160,27 +160,27 @@ class DBConnect(object):
             query += 'and pl.StatusID = 1 and appr.UserID = {}\n'.format(user_info.UserID)
         else:
             if not user_info.isSuperUser:
-                query += 'and (pl.UserID = {0} or exists(select * from payment.PaymentsApproval _appr \
-                        where pl.ID = _appr.PaymentID and _appr.UserID = {0}))\n'.format(user_info.UserID)
+                query += "and (pl.UserID = {0} or exists(select * from payment.PaymentsApproval _appr \
+                        where pl.ID = _appr.PaymentID and _appr.UserID = {0}))\n".format(user_info.UserID)
             if initiator:
-                query += 'and pl.UserID = {}\n'.format(initiator)
+                query += "and pl.UserID = {}\n".format(initiator)
             if mvz:
-                query += 'and MVZ = {}\n'.format(mvz)
+                query += "and MVZ = '{}'\n".format(mvz)
             if office:
-                query += 'and OfficeID = {}\n'.format(office)
+                query += "and OfficeID = {}\n".format(office)
             if contragent:
-                query += 'and ContragentID = {}\n'.format(contragent)
+                query += "and ContragentID = {}\n".format(contragent)
             if plan_date_y:
-                query += 'and year(date_planed) = {}\n'.format(plan_date_y)
+                query += "and year(date_planed) = {}\n".format(plan_date_y)
             if plan_date_m:
-                query += 'and month(date_planed) = {}\n'.format(plan_date_m)
+                query += "and month(date_planed) = {}\n".format(plan_date_m)
             if sumtotal_from:
-                query += 'and SumNoTax >= {}\n'.format(sumtotal_from)
+                query += "and SumNoTax >= {}\n".format(sumtotal_from)
             if sumtotal_to:
-                query += 'and SumNoTax <= {}\n'.format(sumtotal_to)
+                query += "and SumNoTax <= {}\n".format(sumtotal_to)
             if not nds == -1:
-                query += 'and Tax = {}\n'.format(nds)
-        query += 'order by ID DESC' # the same as created(datetime) DESC
+                query += "and Tax = {}\n".format(nds)
+        query += "order by ID DESC" # the same as created(datetime) DESC
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
