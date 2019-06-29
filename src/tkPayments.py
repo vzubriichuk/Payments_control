@@ -6,6 +6,7 @@ Created on Wed May 15 22:51:04 2019
 """
 from calendar import month_name
 from datetime import datetime
+from decimal import Decimal
 from tkcalendar import DateEntry
 from tkinter import ttk, messagebox
 from math import ceil
@@ -187,6 +188,9 @@ class PaymentFrame(tk.Frame):
         user_label = tk.Label(parent, text=self.user_info.ShortUserName, padx=10)
         user_label.pack(side=tk.RIGHT, anchor=tk.NE)
 
+    def _format_float(self, sum_float):
+        return '{:,.2f}'.format(sum_float).replace(',', ' ').replace('.', ',')
+
     def _on_focus_in_format_sum(self, event):
         varname = str(event.widget.cget("textvariable"))
         sum_entry = event.widget.get().replace(' ', '')
@@ -198,9 +202,7 @@ class PaymentFrame(tk.Frame):
             return
         sum_entry = float(event.widget.get().replace(',', '.'))
         varname = str(event.widget.cget("textvariable"))
-        event.widget.setvar(varname, '{:,.2f}'.format(sum_entry)
-                                              .replace(',', ' ')
-                                              .replace('.', ','))
+        event.widget.setvar(varname, self._format_float(sum_entry))
 
     def _validate_sum(self, sum_entry):
         """ Validation of self.sum_entry"""
@@ -536,7 +538,10 @@ class PreviewForm(PaymentFrame):
             'Плановая дата': 90, 'Сумма без НДС': 85, 'Сумма с НДС': 85,
             'Статус': 40, 'Статус заявки': 0, 'Описание': 0, 'Утверждающий': 120}
 
-        self.table = ttk.Treeview(preview_cf, show="headings", selectmode="browse", style="HeaderStyle.Treeview")
+        self.table = ttk.Treeview(preview_cf, show="headings",
+                                  selectmode="browse",
+                                  style="HeaderStyle.Treeview"
+                                  )
         self._init_table(preview_cf)
         self.table.pack(expand=tk.YES, fill=tk.BOTH)
 
@@ -669,6 +674,9 @@ class PreviewForm(PaymentFrame):
                    'just_for_approval': self.show_for_approve.get()
                    }
         self.rows = self.conn.get_paymentslist(self.user_info, **filters)
+        self.rows = [tuple(map(lambda val: self._format_float(val)
+                               if isinstance(val, Decimal) else val, row))
+                     for row in self.rows]
         self._show_rows(self.rows)
 
     def _show_detail(self, event=None):
