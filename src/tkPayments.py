@@ -389,7 +389,6 @@ class CreateForm(PaymentFrame):
                                   ''))
         self.office_box.set(office)
 
-
     def _row1_pack(self):
         self.mvz_label.pack(side=tk.LEFT, pady=5)
         self.mvz_box.pack(side=tk.LEFT, padx=5, pady=5)
@@ -429,10 +428,15 @@ class PreviewForm(PaymentFrame):
         super().__init__(parent, controller, connection, user_info)
         self.mvznames, self.mvzSAP = zip(*[('Все', None),] + mvz)
         self.initiatorsID, self.initiators = zip(*allowed_initiators)
+        # Selectmode for treeview
+        self.selectmode = 'extended' if user_info.isSuperUser else 'browse'
         # Parameters for sorting
         self.rows = None  # store all rows for sorting and redrawing
         self.sort_reversed_index = None  # reverse sorting for last sorted column
         self.month = list(month_name)
+        # Virtual event for treeview
+        self.event_add("<<select_all>>", "<Control-A>", "<Control-a>",
+                       "<Control-ocircumflex>", "<Control-Ocircumflex>")
 
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
@@ -538,12 +542,15 @@ class PreviewForm(PaymentFrame):
             'Плановая дата': 90, 'Сумма без НДС': 85, 'Сумма с НДС': 85,
             'Статус': 40, 'Статус заявки': 0, 'Описание': 0, 'Утверждающий': 120}
 
-        self.table = ttk.Treeview(preview_cf, show="headings",
-                                  selectmode="browse",
-                                  style="HeaderStyle.Treeview"
+        self.table = ttk.Treeview(preview_cf, show='headings',
+                                  selectmode=self.selectmode,
+                                  style='HeaderStyle.Treeview'
                                   )
         self._init_table(preview_cf)
         self.table.pack(expand=tk.YES, fill=tk.BOTH)
+        # allow "select all" operation only for extended selectmode
+        if self.selectmode == 'extended':
+            self.table.bind('<<select_all>>', self._select_all_rows)
 
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
@@ -556,6 +563,11 @@ class PreviewForm(PaymentFrame):
                          command=self._create_from_current)
         bt2.pack(side=tk.LEFT, padx=10, pady=10)
 
+        if user_info.isSuperUser and user_info.AccessType == 2:
+            bt2a = ttk.Button(bottom_cf, text="Утвердить выбранные", width=25,
+                             command=self._approve_multiple)
+            bt2a.pack(side=tk.LEFT, padx=10, pady=10)
+
         bt5 = ttk.Button(bottom_cf, text="Выход", width=10,
                          command=controller.destroy)
         bt5.pack(side=tk.RIGHT, padx=10, pady=10)
@@ -567,6 +579,31 @@ class PreviewForm(PaymentFrame):
         # Pack frames
         bottom_cf.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
         preview_cf.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+    def  _approve_multiple(self):
+        curItems = self.table.selection()
+        if not curItems:
+            return
+        # store paymentID and SumNoTax
+        to_approve = {}
+        for curRow in curItems:
+            request = self.table.item(curRow).get('values')
+            # extract all approvable requests for current user
+            if request[-1] == self.user_info.ShortUserName:
+                to_approve[request[0]] = float(request[11].replace(' ', '')
+                                                          .replace(',', '.'))
+        if not to_approve:
+            return
+        appr_sum = '{:,.0f}'.format(sum(to_approve.values())).replace(',', ' ')
+        confirmed = messagebox.askyesno(title='Подтвердите действие',
+            message='Выбрано заявок: {} на сумму {} грн.\nУтвердить заявки?'
+                    .format(len(to_approve), appr_sum)
+                                       )
+        if not confirmed:
+            return
+        for paymentID in to_approve.keys():
+            self.conn.update_confirmed(self.userID, paymentID, is_approved=True)
+        self._refresh()
 
     def _center_popup_window(self, newlevel, w, h):
         screen_width = self.winfo_screenwidth()
@@ -678,6 +715,10 @@ class PreviewForm(PaymentFrame):
                                if isinstance(val, Decimal) else val, row))
                      for row in self.rows]
         self._show_rows(self.rows)
+
+    def _select_all_rows(self, event):
+        all_items = tuple(self.table.get_children())
+        self.table.selection_set(all_items)
 
     def _show_detail(self, event=None):
         """ Show details when double-clicked on row """
@@ -863,7 +904,7 @@ if __name__ == '__main__':
     with DBConnect(server='s-kv-center-s59', db='LogisticFinance') as sql:
         try:
             app = PaymentApp(connection=sql,
-                             user_info=UserInfo(76, 'TestName', 1, 1),
+                             user_info=UserInfo(76, 'TestName', 2, 1),
                              mvz=[('20511RC191', '20511RC191'), ('40900A2595', '40900A2595')],
                              allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)],
                              okpo = [('012345', 'Test1'), ('987654320', 'Test2')]
