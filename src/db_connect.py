@@ -124,13 +124,6 @@ class DBConnect(object):
                                order by FullName")
         return self.__cursor.fetchall()
 
-    def get_OKPO(self):
-        self.__cursor.execute("select top 20 pac.ValueProperty as OKPO, a.name \
-                    from CB.dbo.PropertyAdressChar pac \
-                        join CB.dbo.Adress a with(nolock) on pac.AdressID = a.ID \
-                    where PropertyID = 2")
-        return self.__cursor.fetchall()
-
     def get_paymentslist(self, user_info, initiator, mvz, office, contragent,
                          plan_date_m, plan_date_y, sumtotal_from, sumtotal_to,
                          nds, just_for_approval):

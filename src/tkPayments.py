@@ -217,10 +217,9 @@ class PaymentFrame(tk.Frame):
 
 class CreateForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info,
-                 mvz, okpo, **kwargs):
+                 mvz, **kwargs):
         super().__init__(parent, controller, connection, user_info)
         self.mvz = dict(mvz)
-        self.okpo = dict(okpo)
 
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
@@ -252,17 +251,13 @@ class CreateForm(PaymentFrame):
         # Pack row1_cf
         self._row1_pack()
 
-        # Second Fill Frame with (OKPO, contragent)
+        # Second Fill Frame with (contragent, CSP)
         row2_cf = tk.Frame(self, name='row2_cf', padx=15)
 
-        self.okpo_current = tk.StringVar()
-        self.okpo_label = tk.Label(row2_cf, text='ОКПО', padx=10)
-        self.okpo_box = ttk.Combobox(row2_cf, textvariable=self.okpo_current, width=15,)
-        self.okpo_box.bind("<<ComboboxSelected>>", self._choose_contragent)
-        self.okpo_box['values'] = list(self.okpo.keys())
         self.contragent_label = tk.Label(row2_cf, text='Контрагент', padx=10)
-        self.contragent_entry = tk.Label(row2_cf, padx=5, bg='lightgray',
-                                         width=22, anchor=tk.W)
+        self.contragent_entry = tk.Entry(row2_cf, width=30)
+        self.csp = tk.Label(row2_cf, text='CSP', padx=10)
+        self.csp_entry = tk.Entry(row2_cf, width=60)
 
         # Pack row2_cf
         self._row2_pack()
@@ -325,19 +320,13 @@ class CreateForm(PaymentFrame):
     def _choose_mvz(self, event):
         self.mvz_sap.config(text=self.mvz[self.mvz_current.get()])
 
-    def _choose_contragent(self, event=None):
-        try:
-            self.contragent_entry.config(text=self.okpo[self.okpo_current.get()])
-        except KeyError:
-            pass
-
     def _clear(self):
         #self.mvz_box.set('')
         self.mvz_current.set('')
         self.mvz_sap.config(text='')
         self.office_box.set('')
-        self.okpo_box.set('')
-        self.contragent_entry.config(text='')
+        self.contragent_entry.delete(0, tk.END)
+        self.csp_entry.delete(0, tk.END)
         self.plan_date_entry.delete(0, tk.END)
         self.sumtotal.set('0,00')
         self.nds.set(20)
@@ -397,10 +386,10 @@ class CreateForm(PaymentFrame):
         self.office_label.pack(side=tk.RIGHT, pady=5)
 
     def _row2_pack(self):
-        self.okpo_label.pack(side=tk.LEFT, pady=5)
-        self.okpo_box.pack(side=tk.LEFT, pady=5)
         self.contragent_label.pack(side=tk.LEFT, pady=5)
-        self.contragent_entry.pack(side=tk.LEFT, pady=5)
+        self.contragent_entry.pack(side=tk.LEFT, padx=5, pady=5)
+        self.csp_entry.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.csp.pack(side=tk.RIGHT, pady=5)
 
     def _row3_pack(self):
         self.plan_date_label.pack(side=tk.LEFT)
@@ -906,8 +895,7 @@ if __name__ == '__main__':
             app = PaymentApp(connection=sql,
                              user_info=UserInfo(76, 'TestName', 2, 1),
                              mvz=[('20511RC191', '20511RC191'), ('40900A2595', '40900A2595')],
-                             allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)],
-                             okpo = [('012345', 'Test1'), ('987654320', 'Test2')]
+                             allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)]
                              )
             app.mainloop()
         except Exception as e:
