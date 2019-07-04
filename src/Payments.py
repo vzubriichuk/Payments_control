@@ -8,6 +8,7 @@ from collections import namedtuple
 from db_connect import DBConnect
 from log_error import writelog
 from pyodbc import Error as SQLError
+from singleinstance import Singleinstance
 import sys
 import tkPayments as tkp
 
@@ -48,6 +49,9 @@ def main():
 
 if __name__ == '__main__':
     try:
+        myapp = Singleinstance()
+        if myapp.aleradyrunning():
+            sys.exit()
         main()
     except Exception as e:
         writelog(e)
