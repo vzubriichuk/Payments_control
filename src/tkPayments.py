@@ -206,7 +206,7 @@ class PaymentFrame(tk.Frame):
 
     def _validate_sum(self, sum_entry):
         """ Validation of self.sum_entry"""
-        sum_entry = sum_entry.replace(',', '.')
+        sum_entry = sum_entry.replace(',', '.').replace(' ', '')
         try:
             if not sum_entry or 0 <= float(sum_entry) < 10**9:
                 return True
@@ -219,7 +219,13 @@ class CreateForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info,
                  mvz, **kwargs):
         super().__init__(parent, controller, connection, user_info)
-        self.mvz = dict(mvz)
+        # {mvzSAP: [mvzname, [office1, office2, ...]], ...}
+        self.mvz = {}
+        for mvzSAP, mvzname, office in mvz:
+            try:
+                self.mvz[mvzname][1].append(office)
+            except KeyError:
+                self.mvz[mvzname] = [mvzSAP, [office]]
 
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
@@ -244,9 +250,9 @@ class CreateForm(PaymentFrame):
 #        self.mvz_box.bind("<<ComboboxSelected>>", self._choose_mvz)
         self.mvz_sap = tk.Label(row1_cf, padx=6, bg='lightgray', width=11)
         self.office_label = tk.Label(row1_cf, text='Офис', padx=10)
-        self.office_box = ttk.Combobox(row1_cf, width=20, state='readonly')
+        self.office_box = ttk.Combobox(row1_cf, width=20, state='disabled')
         #self.office_box['values'] = self.mvzSAP
-        self.office_box['values'] = list(self.mvz.values())
+        #self.office_box['values'] = list(self.mvz.keys())
 
         # Pack row1_cf
         self._row1_pack()
@@ -318,13 +324,22 @@ class CreateForm(PaymentFrame):
         text_cf.pack(side=tk.TOP, fill=tk.X, expand=True, padx=10, pady=5)
 
     def _choose_mvz(self, event):
-        self.mvz_sap.config(text=self.mvz[self.mvz_current.get()])
+        self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0])
+        offices = self.mvz[self.mvz_current.get()][1]
+        if len(offices) == 1:
+            self.office_box.set(offices[0])
+            self.office_box.configure(state="disabled")
+        else:
+            self.office_box.set('')
+            self.office_box['values'] = offices
+            self.office_box.configure(state="readonly")
 
     def _clear(self):
         #self.mvz_box.set('')
         self.mvz_current.set('')
         self.mvz_sap.config(text='')
         self.office_box.set('')
+        self.office_box.configure(state="disabled")
         self.contragent_entry.delete(0, tk.END)
         self.csp_entry.delete(0, tk.END)
         self.plan_date_entry.delete(0, tk.END)
@@ -334,21 +349,26 @@ class CreateForm(PaymentFrame):
         self.plan_date_entry.set_date(datetime.now())
 
     def _create_request(self):
+        messagetitle = 'Создание заявки'
         if not self.mvz_current.get():
             messagebox.showerror(
-                    'Создание заявки',
-                    'Не указано МВЗ'
+                    messagetitle, 'Не указано МВЗ'
             )
             return
         if not self._validate_plan_date():
             messagebox.showerror(
-                    'Создание заявки',
+                    messagetitle,
                     'Плановая дата не может быть сегодняшней или ранее'
             )
             return
+        if not self.office_box.get():
+            messagebox.showerror(
+                    messagetitle, 'Не выбран офис'
+            )
+            return
         request = {'mvz': self.mvz_sap.cget('text'),
-                   'office': self.office_box.current(),
-                   'contragent': self.contragent_entry.cget('text') or None,
+                   'office': self.office_box.get(),
+                   'contragent': self.contragent_entry.get() or None,
                    'plan_date': self.plan_date_entry.get(),
                    'sumtotal': float(self.sumtotal.get_float_form()
                                      if self.sum_entry.get() else 0),
@@ -358,25 +378,24 @@ class CreateForm(PaymentFrame):
         created_success = self.conn.create_request(userID=self.userID, **request)
         if created_success:
             messagebox.showinfo(
-                    'Создание заявки',
-                    'Заявка создана'
+                    messagetitle, 'Заявка создана'
             )
             self._clear()
             self.controller._show_frame('PreviewForm')
         else:
             messagebox.showerror(
-                    'Создание заявки',
-                    'Произошла ошибка при создании заявки'
+                    messagetitle, 'Произошла ошибка при создании заявки'
             )
 
     def _fill_from_PreviewForm(self, mvz, office, contragent):
         """ When button "Создать из заявки" from PreviewForm is activated,
         fill some fields taken from choosed in PreviewForm request.
         """
-        self.mvz_sap.config(text=mvz)
-        self.mvz_current.set(next((name for name, mvzSAP in self.mvz.items() if mvzSAP == str(mvz)),
-                                  ''))
+        self.mvz_current.set(mvz)
+        self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0])
         self.office_box.set(office)
+        self.contragent_entry.delete(0, tk.END)
+        self.contragent_entry.insert(0, contragent)
 
     def _row1_pack(self):
         self.mvz_label.pack(side=tk.LEFT, pady=5)
@@ -415,7 +434,9 @@ class PreviewForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info, mvz,
                  allowed_initiators, **kwargs):
         super().__init__(parent, controller, connection, user_info)
-        self.mvznames, self.mvzSAP = zip(*[('Все', None),] + mvz)
+        self.mvznames, self.mvzSAP, self.office = zip(*[('Все', None, 'Все'),] + mvz)
+        self.office = tuple(sorted(set(self.office),
+                                   key=lambda s: '' if s == 'Все' else s))
         self.initiatorsID, self.initiators = zip(*allowed_initiators)
         # Selectmode for treeview
         self.selectmode = 'extended' if user_info.isSuperUser else 'browse'
@@ -441,7 +462,7 @@ class PreviewForm(PaymentFrame):
         # Filters
         filterframe = ttk.LabelFrame(self, text=' Фильтры ', name='filterframe')
 
-        # First Filter Frame with (MVZ, office, contragentID)
+        # First Filter Frame with (MVZ, office)
         row1_cf = tk.Frame(filterframe, name='row1_cf', padx=15)
 
         self.initiator_label = tk.Label(row1_cf, text='Инициатор', padx=10)
@@ -453,11 +474,8 @@ class PreviewForm(PaymentFrame):
         self.mvz_box['values'] = self.mvznames
 
         self.office_label = tk.Label(row1_cf, text='Офис', padx=20)
-        self.office_box = ttk.Combobox(row1_cf, width=20)
-        self.office_box['values'] = self.mvznames
-
-        self.contragent_label = tk.Label(row1_cf, text='Контрагент', padx=20)
-        self.contragent_entry = tk.Entry(row1_cf, width=21)
+        self.office_box = ttk.Combobox(row1_cf, width=20, state='readonly')
+        self.office_box['values'] = self.office
 
         # Pack row1_cf
         self._row1_pack()
@@ -527,7 +545,7 @@ class PreviewForm(PaymentFrame):
         #self.headings=('a', 'bb', 'cccc')  # for debug
         self.headings = {'ID': 0, 'InitiatorID':0, '№ заявки': 100,
             'Инициатор': 140, 'Дата создания': 90, 'Дата/время создания': 0,
-            'CSP':60, 'МВЗ': 60, 'Офис': 100, 'Контрагент': 60,
+            'CSP':60, 'МВЗ SAP': 60, 'МВЗ': 0, 'Офис': 100, 'Контрагент': 60,
             'Плановая дата': 90, 'Сумма без НДС': 85, 'Сумма с НДС': 85,
             'Статус': 40, 'Статус заявки': 0, 'Описание': 0, 'Утверждающий': 120}
 
@@ -628,7 +646,7 @@ class PreviewForm(PaymentFrame):
             self.table["columns"] = tuple(self.headings.keys())
             self.table["displaycolumns"] = tuple(k for k in self.headings.keys()
                 if k not in ('ID', 'НДС', 'Описание', 'Дата/время создания',
-                             'Статус заявки', 'InitiatorID'))
+                             'МВЗ', 'Статус заявки', 'InitiatorID'))
             for head, width in self.headings.items():
                 self.table.heading(head, text=head, anchor=tk.CENTER)
                 self.table.column(head, width=width, anchor=tk.CENTER)
@@ -664,8 +682,6 @@ class PreviewForm(PaymentFrame):
         self.initiator_box.pack(side=tk.LEFT, padx=5, pady=5)
         self.mvz_label.pack(side=tk.LEFT)
         self.mvz_box.pack(side=tk.LEFT, padx=5, pady=5)
-        self.contragent_entry.pack(side=tk.RIGHT, padx=10, pady=5)
-        self.contragent_label.pack(side=tk.RIGHT)
         self.office_box.pack(side=tk.RIGHT, padx=5, pady=5)
         self.office_label.pack(side=tk.RIGHT)
 
@@ -688,8 +704,8 @@ class PreviewForm(PaymentFrame):
         """ Extract information from filters """
         filters = {'initiator': self.initiatorsID[self.initiator_box.current()],
                    'mvz': self.mvzSAP[self.mvz_box.current()],
-                   'office': self.office_box.current(),
-                   'contragent': self.contragent_entry.get() or None,
+                   'office': (self.office_box.current() and
+                              self.office[self.office_box.current()]),
                    'plan_date_m': self.plan_date_entry_m.current(),
                    'plan_date_y': self.year.get() if self.plan_date_entry_y.get() else 0.,
                    'sumtotal_from': float(self.sumtotal_from.get_float_form()
@@ -780,7 +796,8 @@ class DetailedPreview(tk.Frame):
         # Add info to table_frame
         fonts = (('Calibri', 12, 'bold'), ('Calibri', 12))
         for row in zip(range(len(head)), zip(head, info)):
-            if row[1][0] not in ('ID', 'Дата создания', 'Утверждающий', 'Статус'):
+            if row[1][0] not in ('ID', 'InitiatorID', 'Дата создания',
+                                 'Утверждающий', 'Статус'):
                 self._newRow(self.table_frame, fonts, *row)
 
         self.appr_label = tk.Label(self.top, text='Утверждающие',

@@ -44,16 +44,16 @@ class DBConnect(object):
         query = '''
         exec payment.create_request @UserID = ?,
                                     @MVZ = ?,
-                                    @OfficeID = ?,
-                                    @ContragentID = ?,
+                                    @Office = ?,
+                                    @Contragent = ?,
                                     @date_planed = ?,
                                     @Description = ?,
                                     @SumNoTax = ?,
                                     @Tax = ?
             '''
         try:
-            self.__cursor.execute(query, userID, mvz, office, contragent, plan_date,
-                                  text, sumtotal, nds)
+            self.__cursor.execute(query, userID, mvz, office, contragent,
+                                  plan_date, text, sumtotal, nds)
             self.__db.commit()
             return 1
         except pyodbc.ProgrammingError:
@@ -66,28 +66,12 @@ class DBConnect(object):
         return self.__cursor.fetchone()
 
     def get_allowed_initiators(self, UserID, AccessType, isSuperUser):
-        if isSuperUser:
-            query = '''
-            select UserID, UserName
-            from payment.People
-            where AccessType in (1, 2, 3)
-            order by UserName
-            '''
-        elif AccessType == 1:
-            query = '''
-            select UserID, UserName
-            from payment.People
-            where UserID = {}
-            '''.format(UserID)
-        elif AccessType == 2:
-            query = '''
-            select UserID, UserName
-            from payment.People
-            where AccessType in (1, 2, 3)
-                or UserID = {}
-            order by UserName
-            '''.format(UserID)
-        self.__cursor.execute(query)
+        query = '''
+        exec payment.get_allowed_initiators @UserID = ?,
+                                            @AccessType = ?,
+                                            @isSuperUser = ?
+        '''
+        self.__cursor.execute(query, UserID, AccessType, isSuperUser)
         return [(None, 'Все'),] + self.__cursor.fetchall()
 
     def get_approvals(self, paymentID):
@@ -104,27 +88,29 @@ class DBConnect(object):
         self.__cursor.execute(query, paymentID)
         return self.__cursor.fetchall()
 
-    def get_discardlist(self, userID):
-        query = '''
-        select ID as ID,
-           'Лог-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(ID as varchar(7)) as Num,
-           cast(date_created as date) as date_created, '' as CSP,
-           MVZ, OfficeID, date_planed, SumNoTax,
-           LEFT(Description, 50) + IIF(LEN(Description) > 50, ' ...', '') as ShortDesc
-        from payment.PaymentsList
-        where StatusID = 1 and UserID = ?
-        '''
-        self.__cursor.execute(query, userID)
+    def get_MVZ(self, user_info):
+        if user_info.isSuperUser:
+            query = '''
+            select obj.MVZsap, co.FullName, obj.ServiceName
+            from payment.ObjectsList obj
+                join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap\n
+            '''
+        else:
+            query = '''
+            select obj.MVZsap, co.FullName, obj.ServiceName
+            from payment.ObjectsList obj
+                join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
+                join payment.User_Approvals_Ref ref on obj.ID = ref.ObjectID
+            where ref.UserID = {}\n
+            '''.format(user_info.UserID)
+        if user_info.AccessType == 1:
+            query += ("and cast(getdate() as date) between appr.activeFrom "
+                      "and isnull(appr.activeTo, '20990101')\n")
+        query += "order by co.FullName"
+        self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
-    def get_MVZ(self):
-        self.__cursor.execute("select FullName, SAPmvz \
-                               from LogisticFinance.BTool.aid_CostObject_Detail \
-                               where SAPmvz != 'пусто' \
-                               order by FullName")
-        return self.__cursor.fetchall()
-
-    def get_paymentslist(self, user_info, initiator, mvz, office, contragent,
+    def get_paymentslist(self, user_info, initiator, mvz, office,
                          plan_date_m, plan_date_y, sumtotal_from, sumtotal_to,
                          nds, just_for_approval):
         """ Generate query according to user's acces type and filters.
@@ -134,11 +120,14 @@ class DBConnect(object):
            'Лог-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.ID as varchar(7)) as Num,
            pp.ShortUserName, cast(date_created as date) as date_created,
            cast(date_created as smalldatetime) as datetime_created, '' as CSP,
-           MVZ, OfficeID, isnull(ContragentID, '') as ContragentID, date_planed,
+           obj.MVZsap, co.FullName, obj.ServiceName,
+           isnull(Contragent, '') as Contragent, date_planed,
            SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
            p.ValueName as StatusName, p.ValueDescription, pl.Description,
            case when pl.StatusID = 1 then isnull(pappr.ShortUserName, '') else '' end as approval
         from payment.PaymentsList pl
+        join payment.ObjectsList obj on pl.ObjectID = obj.ID
+        join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
         join payment.People pp on pl.UserID = pp.UserID
         join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
                                     and p.idParams = 2
@@ -158,11 +147,9 @@ class DBConnect(object):
             if initiator:
                 query += "and pl.UserID = {}\n".format(initiator)
             if mvz:
-                query += "and MVZ = '{}'\n".format(mvz)
+                query += "and obj.MVZsap = '{}'\n".format(mvz)
             if office:
-                query += "and OfficeID = {}\n".format(office)
-            if contragent:
-                query += "and ContragentID = {}\n".format(contragent)
+                query += "and obj.ServiceName = '{}'\n".format(office)
             if plan_date_y:
                 query += "and year(date_planed) = {}\n".format(plan_date_y)
             if plan_date_m:
