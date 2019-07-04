@@ -4,7 +4,22 @@ Created on Thu Dec 20 09:43:48 2018
 
 @author: v.shkaberda
 """
+from functools import wraps
+from tkPayments import NetworkError
 import pyodbc
+
+def monitor_network_state(method):
+    """ Show error message in case of network error
+    """
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        try:
+            return method(self, *args, **kwargs)
+        except pyodbc.Error as e:
+            # Network error
+            if e.args[0] in ('01000', '08S01', '08001'):
+                NetworkError()
+    return wrapper
 
 
 class DBConnect(object):
@@ -29,6 +44,7 @@ class DBConnect(object):
     def __exit__(self, type, value, traceback):
         self.__db.close()
 
+    @monitor_network_state
     def access_check(self):
         """ Check user permission.
             If access prmitted returns True, otherwise None.
@@ -39,6 +55,7 @@ class DBConnect(object):
         if access and (access[0] in (1, 2) or access[1]):
             return True
 
+    @monitor_network_state
     def create_request(self, userID, mvz, office, contragent, plan_date,
                        sumtotal, nds, text):
         query = '''
@@ -59,12 +76,14 @@ class DBConnect(object):
         except pyodbc.ProgrammingError:
             return 0
 
+    @monitor_network_state
     def get_user_info(self):
         self.__cursor.execute("select UserID, ShortUserName, AccessType, isSuperUser \
           from payment.People \
           where UserLogin = right(ORIGINAL_LOGIN(), len(ORIGINAL_LOGIN()) - charindex( '\\' , ORIGINAL_LOGIN()))")
         return self.__cursor.fetchone()
 
+    @monitor_network_state
     def get_allowed_initiators(self, UserID, AccessType, isSuperUser):
         query = '''
         exec payment.get_allowed_initiators @UserID = ?,
@@ -74,6 +93,7 @@ class DBConnect(object):
         self.__cursor.execute(query, UserID, AccessType, isSuperUser)
         return [(None, 'Все'),] + self.__cursor.fetchall()
 
+    @monitor_network_state
     def get_approvals(self, paymentID):
         query = '''
         select pappr.ShortUserName as approval,
@@ -88,6 +108,7 @@ class DBConnect(object):
         self.__cursor.execute(query, paymentID)
         return self.__cursor.fetchall()
 
+    @monitor_network_state
     def get_MVZ(self, user_info):
         if user_info.isSuperUser:
             query = '''
@@ -110,6 +131,7 @@ class DBConnect(object):
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
+    @monitor_network_state
     def get_paymentslist(self, user_info, initiator, mvz, office,
                          plan_date_m, plan_date_y, sumtotal_from, sumtotal_to,
                          nds, just_for_approval):
@@ -164,12 +186,14 @@ class DBConnect(object):
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
+    @monitor_network_state
     def raw_query(self, query):
         """ Takes the query and returns output from db.
         """
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
+    @monitor_network_state
     def update_confirmed(self, userID, paymentID, is_approved):
         query = '''
         exec payment.approve_request @UserID = ?,
@@ -179,6 +203,7 @@ class DBConnect(object):
         self.__cursor.execute(query, userID, paymentID, is_approved)
         self.__db.commit()
 
+    @monitor_network_state
     def update_discarded(self, discardID):
         query = '''
         UPDATE payment.PaymentsList

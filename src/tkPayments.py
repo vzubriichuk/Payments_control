@@ -19,14 +19,26 @@ EMAIL_TO = b'\xd0\xa4\xd0\xbe\xd0\xb7\xd0\xb7\xd0\xb8|\
 \xd0\x90\xd0\xbd\xd0\xb0\xd0\xbb\xd0\xb8\xd1\x82\xd0\xb8\xd0\xba\xd0\xb8'.decode()
 
 
+class AccessError(tk.Tk):
+    """ Raise an error when user doesn't have permission to work with app.
+    """
+    def __init__(self):
+        super().__init__()
+        self.withdraw()  # Do not show main window
+        messagebox.showerror(
+            'Ошибка доступа',
+            'Нет прав для работы с приложением.\n'
+            'Для получения прав обратитесь на рассылку ' + EMAIL_TO
+        )
+        self.destroy()
+
+
 class LoginError(tk.Tk):
     """ Raise an error when user doesn't have permission to work with db.
     """
     def __init__(self):
         super().__init__()
-
-        # Do not show main window
-        self.withdraw()
+        self.withdraw()  # Do not show main window
         messagebox.showerror(
                 'Ошибка подключения',
                 'Нет прав для работы с сервером.\n'
@@ -35,18 +47,15 @@ class LoginError(tk.Tk):
         self.destroy()
 
 
-class AccessError(tk.Tk):
-    """ Raise an error when user doesn't have permission to work with app.
+class NetworkError(tk.Tk):
+    """ Raise a message about network error.
     """
     def __init__(self):
         super().__init__()
-
-        # Do not show main window
-        self.withdraw()
+        self.withdraw()  # Do not show main window
         messagebox.showerror(
-            'Ошибка доступа',
-            'Нет прав для работы с приложением.\n'
-            'Для получения прав обратитесь на рассылку ' + EMAIL_TO
+                'Ошибка cети',
+                'Возникла общая ошибка сети.\nПерезапустите приложение'
         )
         self.destroy()
 
@@ -157,10 +166,13 @@ class PaymentApp(tk.Tk):
         frame = self._frames[frame_name]
         frame.tkraise()
         self._center_window(*(self._geometry[frame_name]))
-        if frame_name in ('PreviewForm'):
-            frame._resize_columns()
-            frame._refresh()
-        self.active_frame = frame_name
+        # Make sure active_frame changes in case of network error
+        try:
+            if frame_name in ('PreviewForm'):
+                frame._resize_columns()
+                frame._refresh()
+        finally:
+            self.active_frame = frame_name
 
     def _create_request(self, event):
         "Draws an orange blob in self.canv where the mouse is."
@@ -912,7 +924,8 @@ if __name__ == '__main__':
         try:
             app = PaymentApp(connection=sql,
                              user_info=UserInfo(76, 'TestName', 2, 1),
-                             mvz=[('20511RC191', '20511RC191'), ('40900A2595', '40900A2595')],
+                             mvz=[('20511RC191', '20511RC191', 'Офис'),
+                                  ('40900A2595', '40900A2595', 'Офис')],
                              allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)]
                              )
             app.mainloop()
