@@ -100,12 +100,12 @@ class DBConnect(object):
             select obj.MVZsap, co.FullName, obj.ServiceName
             from payment.ObjectsList obj
                 join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
-                join payment.User_Approvals_Ref ref on obj.ID = ref.ObjectID
-            where ref.UserID = {}\n
+                join payment.User_Approvals_Ref appr on obj.ID = appr.ObjectID
+            where appr.UserID = {}\n
             '''.format(user_info.UserID)
-        if user_info.AccessType == 1:
-            query += ("and cast(getdate() as date) between appr.activeFrom "
-                      "and isnull(appr.activeTo, '20990101')\n")
+            if user_info.AccessType == 1:
+                query += ("and cast(getdate() as date) between appr.activeFrom"
+                          " and isnull(appr.activeTo, '20990101')\n")
         query += "order by co.FullName"
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
