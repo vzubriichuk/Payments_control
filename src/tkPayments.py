@@ -74,7 +74,7 @@ class PaymentApp(tk.Tk):
         self.bind("<<create>>", self._create_request)
         self.active_frame = None
         # handle the window close event
-        self.protocol("WM_DELETE_WINDOW", self._to_preview_form)
+        self.protocol("WM_DELETE_WINDOW", self._quit)
         # hide until all frames have been created
         self.withdraw()
         # To import months names in cyrillic
@@ -167,7 +167,7 @@ class PaymentApp(tk.Tk):
         if self.active_frame == 'CreateForm':
             self._frames[self.active_frame]._create_request()
 
-    def _to_preview_form(self):
+    def _quit(self):
         if self.active_frame != 'PreviewForm':
             self._show_frame('PreviewForm')
         elif messagebox.askokcancel("Выход", "Выйти из приложения?"):
@@ -576,7 +576,7 @@ class PreviewForm(PaymentFrame):
             bt2a.pack(side=tk.LEFT, padx=10, pady=10)
 
         bt5 = ttk.Button(bottom_cf, text="Выход", width=10,
-                         command=controller.destroy)
+                         command=controller._quit)
         bt5.pack(side=tk.RIGHT, padx=10, pady=10)
 
         bt4 = ttk.Button(bottom_cf, text="Подробно", width=10,
@@ -731,6 +731,7 @@ class PreviewForm(PaymentFrame):
             curRow = self.table.focus()
             if curRow:
                 newlevel = tk.Toplevel(self.parent)
+                newlevel.transient(self)  # disable minimize/maximize buttons
                 newlevel.title('Заявка детально')
                 newlevel.iconbitmap('../resources/preview.ico')
                 approval = self.table.item(curRow).get('values')[-1]
