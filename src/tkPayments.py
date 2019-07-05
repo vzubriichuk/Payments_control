@@ -381,6 +381,7 @@ class CreateForm(PaymentFrame):
         request = {'mvz': self.mvz_sap.cget('text'),
                    'office': self.office_box.get(),
                    'contragent': self.contragent_entry.get() or None,
+                   'csp': self.csp_entry.get() or None,
                    'plan_date': self.plan_date_entry.get(),
                    'sumtotal': float(self.sumtotal.get_float_form()
                                      if self.sum_entry.get() else 0),
@@ -748,7 +749,9 @@ class PreviewForm(PaymentFrame):
                 newlevel.iconbitmap('../resources/preview.ico')
                 approval = self.table.item(curRow).get('values')[-1]
                 # check if current user is approval person
-                if self.user_info.ShortUserName == approval:
+                if self.user_info.ShortUserName == approval and (
+                        self.user_info.AccessType == 2
+                        or self.user_info.isSuperUser == 1):
                     ApproveConfirmation(newlevel, self, self.conn, self.userID,
                                         self.headings,
                                         self.table.item(curRow).get('values'))
@@ -834,11 +837,13 @@ class DetailedPreview(tk.Frame):
 
         if self.approveclass_bool:
             bt1 = ttk.Button(self.bottom, text="Утвердить", width=10,
-                             command=lambda: self._close(True), style='ButtonGreen.TButton')
+                             command=lambda: self._close(True),
+                             style='ButtonGreen.TButton')
             bt1.pack(side=tk.LEFT, padx=15, pady=5)
 
             bt2 = ttk.Button(self.bottom, text="Отклонить", width=10,
-                             command=lambda: self._close(False), style='ButtonRed.TButton')
+                             command=lambda: self._close(False),
+                             style='ButtonRed.TButton')
             bt2.pack(side=tk.LEFT, padx=15, pady=5)
 
         bt4 = ttk.Button(self.bottom, text="Закрыть", width=10,

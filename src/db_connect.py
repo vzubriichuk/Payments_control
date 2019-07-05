@@ -56,7 +56,7 @@ class DBConnect(object):
             return True
 
     @monitor_network_state
-    def create_request(self, userID, mvz, office, contragent, plan_date,
+    def create_request(self, userID, mvz, office, contragent, csp, plan_date,
                        sumtotal, nds, text):
         query = '''
         exec payment.create_request @UserID = ?,
@@ -66,11 +66,12 @@ class DBConnect(object):
                                     @date_planed = ?,
                                     @Description = ?,
                                     @SumNoTax = ?,
-                                    @Tax = ?
+                                    @Tax = ?,
+                                    @CSP = ?
             '''
         try:
             self.__cursor.execute(query, userID, mvz, office, contragent,
-                                  plan_date, text, sumtotal, nds)
+                                  plan_date, text, sumtotal, nds, csp)
             self.__db.commit()
             return 1
         except pyodbc.ProgrammingError:
@@ -141,8 +142,8 @@ class DBConnect(object):
         select pl.ID as ID, pl.UserID as InitiatorID,
            'Лог-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.ID as varchar(7)) as Num,
            pp.ShortUserName, cast(date_created as date) as date_created,
-           cast(date_created as smalldatetime) as datetime_created, '' as CSP,
-           obj.MVZsap, co.FullName, obj.ServiceName,
+           cast(date_created as smalldatetime) as datetime_created,
+           isnull(CSP, '') as CSP, obj.MVZsap, co.FullName, obj.ServiceName,
            isnull(Contragent, '') as Contragent, date_planed,
            SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
            p.ValueName as StatusName, p.ValueDescription, pl.Description,
