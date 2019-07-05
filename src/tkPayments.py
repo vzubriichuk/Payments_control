@@ -10,6 +10,7 @@ from decimal import Decimal
 from tkcalendar import DateEntry
 from tkinter import ttk, messagebox
 from math import ceil
+from xl import export_to_excel
 import locale
 import tkinter as tk
 
@@ -557,10 +558,11 @@ class PreviewForm(PaymentFrame):
         # column name and width
         #self.headings=('a', 'bb', 'cccc')  # for debug
         self.headings = {'ID': 0, 'InitiatorID':0, '№ заявки': 100,
-            'Инициатор': 140, 'Дата создания': 90, 'Дата/время создания': 0,
-            'CSP':60, 'МВЗ SAP': 60, 'МВЗ': 0, 'Офис': 100, 'Контрагент': 60,
+            'Инициатор': 140, 'Дата создания': 90, 'Дата/время создания': 120,
+            'CSP':60, 'МВЗ SAP': 60, 'МВЗ': 150, 'Офис': 100, 'Контрагент': 60,
             'Плановая дата': 90, 'Сумма без НДС': 85, 'Сумма с НДС': 85,
-            'Статус': 40, 'Статус заявки': 0, 'Описание': 0, 'Утверждающий': 120}
+            'Статус': 40, 'Статус заявки': 120, 'Описание': 120,
+            'Утверждающий': 120}
 
         self.table = ttk.Treeview(preview_cf, show='headings',
                                   selectmode=self.selectmode,
@@ -591,12 +593,16 @@ class PreviewForm(PaymentFrame):
                              command=self._approve_multiple)
             bt2b.pack(side=tk.LEFT, padx=10, pady=10)
 
-        bt5 = ttk.Button(bottom_cf, text="Выход", width=10,
+        bt6 = ttk.Button(bottom_cf, text="Выход", width=10,
                          command=controller._quit)
+        bt6.pack(side=tk.RIGHT, padx=10, pady=10)
+
+        bt5 = ttk.Button(bottom_cf, text="Подробно", width=10,
+                         command=self._show_detail)
         bt5.pack(side=tk.RIGHT, padx=10, pady=10)
 
-        bt4 = ttk.Button(bottom_cf, text="Подробно", width=10,
-                         command=self._show_detail)
+        bt4 = ttk.Button(bottom_cf, text="Экспорт в Excel", width=15,
+                         command=self._export_to_excel)
         bt4.pack(side=tk.RIGHT, padx=10, pady=10)
 
         # Pack frames
@@ -657,6 +663,22 @@ class PreviewForm(PaymentFrame):
             self.controller._fill_CreateForm(**to_fill)
             self.controller._show_frame('CreateForm')
 
+    def _export_to_excel(self):
+        if not self.rows:
+            return
+        isExported = export_to_excel(self.headings, self.rows)
+        if isExported:
+            messagebox.showinfo(
+                'Экспорт в Excel',
+                'Данные экспортированы на рабочий стол'
+            )
+        else:
+            messagebox.showerror(
+                'Экспорт в Excel',
+                'При экспорте произошла непредвиденная ошибка'
+            )
+
+
     def _init_table(self, parent):
         if isinstance(self.headings, dict):
             self.table["columns"] = tuple(self.headings.keys())
@@ -676,10 +698,9 @@ class PreviewForm(PaymentFrame):
 
         #self._show_rows(rows=((123, 456, 789), ('abc', 'def', 'ghk')))  # for debug
 
-        self.table.tag_configure('Отм.', background='lightgray')
-        self.table.tag_configure('Утв.', background='lightgreen')
-        self.table.tag_configure('Откл.', background='#f66e6e')
-        self.table.tag_configure('На согл.', background='#ffffc8')
+        for tag, bg in zip(('Отм.', 'Утв.', 'Откл.', 'На согл.'),
+                           ('lightgray', 'lightgreen', '#f66e6e', '#ffffc8')):
+            self.table.tag_configure(tag, background=bg)
         #self.table.tag_configure('oddrow', background='lightgray')
 
         self.table.bind('<Double-1>', self._show_detail)
@@ -782,10 +803,7 @@ class PreviewForm(PaymentFrame):
             self.sort_reversed_index = None if self.sort_reversed_index==sort_col else sort_col
             self._show_rows(self.rows)
 
-    def _show_rows(self, rows=((777, 88, 9),
-                               ('abce', 'de`24f', 'gh`24k'),
-                               ('', '1', ''),
-                               ('123123', '11', '2'))*3):
+    def _show_rows(self, rows):
         """ Refresh table with new rows """
         self.table.delete(*self.table.get_children())
 
