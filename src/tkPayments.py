@@ -584,9 +584,12 @@ class PreviewForm(PaymentFrame):
         bt2.pack(side=tk.LEFT, padx=10, pady=10)
 
         if user_info.isSuperUser and user_info.AccessType == 2:
-            bt2a = ttk.Button(bottom_cf, text="Утвердить выбранные", width=25,
-                             command=self._approve_multiple)
+            bt2a = ttk.Button(bottom_cf, text="Выбрать все", width=25,
+                             command=self._select_all_rows)
             bt2a.pack(side=tk.LEFT, padx=10, pady=10)
+            bt2b = ttk.Button(bottom_cf, text="Утвердить выбранные", width=25,
+                             command=self._approve_multiple)
+            bt2b.pack(side=tk.LEFT, padx=10, pady=10)
 
         bt5 = ttk.Button(bottom_cf, text="Выход", width=10,
                          command=controller._quit)
@@ -734,7 +737,7 @@ class PreviewForm(PaymentFrame):
                      for row in self.rows]
         self._show_rows(self.rows)
 
-    def _select_all_rows(self, event):
+    def _select_all_rows(self, event=None):
         all_items = tuple(self.table.get_children())
         self.table.selection_set(all_items)
 
