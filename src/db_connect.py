@@ -72,10 +72,11 @@ class DBConnect(object):
         try:
             self.__cursor.execute(query, userID, mvz, office, contragent,
                                   plan_date, text, sumtotal, nds, csp)
+            request_allowed = self.__cursor.fetchone()[0]
             self.__db.commit()
-            return 1
+            return request_allowed
         except pyodbc.ProgrammingError:
-            return 0
+            return
 
     @monitor_network_state
     def get_user_info(self):
@@ -107,6 +108,18 @@ class DBConnect(object):
         order by approval_order ASC
             '''
         self.__cursor.execute(query, paymentID)
+        return self.__cursor.fetchall()
+
+    @monitor_network_state
+    def get_limits_info(self):
+        query = '''
+        select UserID, UserName, userCreateRequestLimit, resetCreateRequestLimit
+        from payment.People
+        where AccessType in (1, 2)
+            or isSuperUser = 1
+        order by UserName
+            '''
+        self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
     @monitor_network_state
@@ -213,6 +226,21 @@ class DBConnect(object):
         '''
         self.__cursor.execute(query, discardID)
         self.__db.commit()
+
+    @monitor_network_state
+    def update_limits(self, limits):
+        query = '''
+        UPDATE payment.People
+        SET resetCreateRequestLimit = ?, userCreateRequestLimit = ?
+        where UserID = ?
+        '''
+        limits = [tuple(reversed(info)) for info in limits]
+        try:
+            self.__cursor.executemany(query, limits)
+            self.__db.commit()
+            return 1
+        except pyodbc.ProgrammingError:
+            return 0
 
 
 if __name__ == '__main__':

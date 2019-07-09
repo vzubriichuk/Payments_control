@@ -7,6 +7,7 @@ Created on Wed May 15 22:51:04 2019
 from calendar import month_name
 from datetime import datetime
 from decimal import Decimal
+from label_grid import LabelGrid
 from tkcalendar import DateEntry
 from tkinter import ttk, messagebox
 from math import ceil
@@ -176,7 +177,7 @@ class PaymentApp(tk.Tk):
             self.active_frame = frame_name
 
     def _create_request(self, event):
-        "Draws an orange blob in self.canv where the mouse is."
+        "Creates request when hotkey is pressed if active_frame is CreateForm"
         if self.active_frame == 'CreateForm':
             self._frames[self.active_frame]._create_request()
 
@@ -258,14 +259,9 @@ class CreateForm(PaymentFrame):
         self.mvz_box = ttk.OptionMenu(row1_cf, self.mvz_current, '', *self.mvz.keys(),
                                       command = self._choose_mvz)
         self.mvz_box.config(width=40)
-#        self.mvz_box = ttk.Combobox(row1_cf, width=35)
-#        self.mvz_box['values'] = self.mvznames
-#        self.mvz_box.bind("<<ComboboxSelected>>", self._choose_mvz)
         self.mvz_sap = tk.Label(row1_cf, padx=6, bg='lightgray', width=11)
         self.office_label = tk.Label(row1_cf, text='Офис', padx=10)
         self.office_box = ttk.Combobox(row1_cf, width=20, state='disabled')
-        #self.office_box['values'] = self.mvzSAP
-        #self.office_box['values'] = list(self.mvz.keys())
 
         # Pack row1_cf
         self._row1_pack()
@@ -348,7 +344,6 @@ class CreateForm(PaymentFrame):
             self.office_box.configure(state="readonly")
 
     def _clear(self):
-        #self.mvz_box.set('')
         self.mvz_current.set('')
         self.mvz_sap.config(text='')
         self.office_box.set('')
@@ -390,12 +385,25 @@ class CreateForm(PaymentFrame):
                    'text': self.desc_text.get("1.0", tk.END)
                    }
         created_success = self.conn.create_request(userID=self.userID, **request)
-        if created_success:
+        if created_success == 1:
             messagebox.showinfo(
                     messagetitle, 'Заявка создана'
             )
             self._clear()
             self.controller._show_frame('PreviewForm')
+        elif created_success == 0:
+            # Take plan_date and convert it into format "Month_name Year"
+            try:
+                dat = datetime.strptime(request['plan_date'], '%d.%m.%y')
+            except ValueError:
+                dat = datetime.strptime(request['plan_date'], '%d.%m.%Y')
+            dat = dat.strftime("%B %Y")
+            messagebox.showerror(
+                    messagetitle,
+                    'Превышен лимит суммы на {}.\n'
+                    'Для повышения лимита обратитесь в отдел контроллинга'
+                    .format(dat)
+            )
         else:
             messagebox.showerror(
                     messagetitle, 'Произошла ошибка при создании заявки'
@@ -605,9 +613,24 @@ class PreviewForm(PaymentFrame):
                          command=self._export_to_excel)
         bt4.pack(side=tk.RIGHT, padx=10, pady=10)
 
+        if user_info.isSuperUser and user_info.AccessType == 2:
+            bt4a = ttk.Button(bottom_cf, text="Изменить лимиты", width=20,
+                             command=self._alter_limits)
+            bt4a.pack(side=tk.RIGHT, padx=10, pady=10)
+
         # Pack frames
         bottom_cf.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
         preview_cf.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+    def _alter_limits(self):
+        newlevel = tk.Toplevel(self.parent)
+        newlevel.transient(self)  # disable minimize/maximize buttons
+        newlevel.title('Изменение лимитов')
+        AlterLimits(newlevel, self.conn)
+        newlevel.resizable(width=False, height=False)
+        self._center_popup_window(newlevel, 400, 300)
+        newlevel.focus()
+        newlevel.grab_set()
 
     def  _approve_multiple(self):
         curItems = self.table.selection()
@@ -619,7 +642,7 @@ class PreviewForm(PaymentFrame):
             request = self.table.item(curRow).get('values')
             # extract all approvable requests for current user
             if request[-1] == self.user_info.ShortUserName:
-                to_approve[request[0]] = float(request[11].replace(' ', '')
+                to_approve[request[0]] = float(request[-6].replace(' ', '')
                                                           .replace(',', '.'))
         if not to_approve:
             return
@@ -753,9 +776,6 @@ class PreviewForm(PaymentFrame):
                    'just_for_approval': self.show_for_approve.get()
                    }
         self.rows = self.conn.get_paymentslist(self.user_info, **filters)
-        self.rows = [tuple(map(lambda val: self._format_float(val)
-                               if isinstance(val, Decimal) else val, row))
-                     for row in self.rows]
         self._show_rows(self.rows)
 
     def _select_all_rows(self, event=None):
@@ -806,11 +826,11 @@ class PreviewForm(PaymentFrame):
     def _show_rows(self, rows):
         """ Refresh table with new rows """
         self.table.delete(*self.table.get_children())
-
         for row in rows:
             # tag = (Status,)
             self.table.insert('', tk.END,
-                              values=tuple(row),
+                              values=tuple(map(lambda val: self._format_float(val)
+                               if isinstance(val, Decimal) else val, row)),
                               tags=(row[-4],))
 
 
@@ -917,7 +937,6 @@ class DetailedPreview(tk.Frame):
             form_column(rowNumber, lineNumber, col_num, cell, fonts)
 
     def _pack_frames(self):
-        # Pack frames
         self.top.pack(side=tk.TOP, fill=tk.X, expand=False)
         self.bottom.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
         self.appr_cf.pack(side=tk.TOP, fill=tk.X)
@@ -937,6 +956,77 @@ class ApproveConfirmation(DetailedPreview):
             self.conn.update_confirmed(self.userID, self.paymentID, is_approved)
             self.parentform._refresh()
             self.parent.destroy()
+
+
+class AlterLimits(tk.Frame):
+    def __init__(self, parent, conn):
+        super().__init__(parent)
+        self.parent = parent
+        self.conn = conn
+        self.limits = self.conn.get_limits_info()
+
+        # Top Canvas Frame to connect Frame and Scrollbar
+        self.canvas = tk.Canvas(self, borderwidth=0, background="#ffffff",
+                                width=500, height=200)
+
+        # {Column name: width}
+        self.headings = {'UserID': 3, 'Инициатор': 40,
+                         'Лимит': 8, 'Обнулять': 8}
+
+        self.table = LabelGrid(self.canvas,
+                               headers=self.headings,
+                               content=self.limits
+                               )
+
+        self.scrolltable = tk.Scrollbar(self, orient="vertical",
+                                        command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.scrolltable.set)
+        self.canvas.create_window((4,4), window=self.table, anchor="nw",
+                                  tags="self.table")
+
+        self.table.bind("<Configure>", self._onFrameConfigure)
+
+        # Bottom Frame with buttons
+        self.bottom = tk.Frame(self, name='bottom_al')
+
+        bt2 = ttk.Button(self.bottom, text="Закрыть", width=10,
+                         command=self.parent.destroy)
+        bt2.pack(side=tk.RIGHT, padx=15, pady=5)
+
+        bt1 = ttk.Button(self.bottom, text="Сохранить", width=10,
+                         command=self._update)
+        bt1.pack(side=tk.RIGHT, padx=15, pady=5)
+        self._pack_frames()
+
+    def _onFrameConfigure(self, event):
+        '''Reset the scroll region to encompass the inner frame'''
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _pack_frames(self):
+        self.bottom.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
+        self.scrolltable.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.pack()
+
+    def _update(self):
+        messagetitle = self.parent.title()
+        try:
+            limits = self.table.get_values()
+        except ValueError:
+            messagebox.showerror(
+                    messagetitle, 'Введена некорректная сумма'
+            )
+            return
+        update_success = self.conn.update_limits(limits)
+        if update_success:
+            messagebox.showinfo(
+                    messagetitle, 'Изменения внесены'
+            )
+            self.parent.destroy()
+        else:
+            messagebox.showerror(
+                    messagetitle, 'Произошла непредвиденная ошибка'
+            )
 
 
 if __name__ == '__main__':
