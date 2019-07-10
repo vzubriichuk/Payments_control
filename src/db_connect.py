@@ -189,7 +189,7 @@ class DBConnect(object):
             if plan_date_y:
                 query += "and year(date_planed) = {}\n".format(plan_date_y)
             if plan_date_m:
-                query += "and month(date_planed) = {}\n".format(plan_date_m)
+                query += "and month(date_planed) in ({})\n".format(plan_date_m)
             if sumtotal_from:
                 query += "and SumNoTax >= {}\n".format(sumtotal_from)
             if sumtotal_to:

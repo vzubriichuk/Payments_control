@@ -8,6 +8,7 @@ from calendar import month_name
 from datetime import datetime
 from decimal import Decimal
 from label_grid import LabelGrid
+from multiselect import MultiselectMenu
 from tkcalendar import DateEntry
 from tkinter import ttk, messagebox
 from math import ceil
@@ -466,6 +467,7 @@ class PreviewForm(PaymentFrame):
         self.rows = None  # store all rows for sorting and redrawing
         self.sort_reversed_index = None  # reverse sorting for last sorted column
         self.month = list(month_name)
+        self.month_default = self.month[datetime.now().month]
         # Virtual event for treeview
         self.event_add("<<select_all>>", "<Control-A>", "<Control-a>",
                        "<Control-ocircumflex>", "<Control-Ocircumflex>")
@@ -507,8 +509,10 @@ class PreviewForm(PaymentFrame):
         row2_cf = tk.Frame(filterframe, name='row2_cf', padx=15)
 
         self.plan_date_label_m = tk.Label(row2_cf, text='Плановая дата:  месяц', padx=10)
-        self.plan_date_entry_m = ttk.Combobox(row2_cf, width=15, state='readonly')
-        self.plan_date_entry_m['values'] = self.month
+        #self.plan_date_entry_m = ttk.Combobox(row2_cf, width=15, state='readonly')
+        self.plan_date_entry_m = MultiselectMenu(row2_cf, self.month_default,
+                                                 self.month, width=15)
+        #self.plan_date_entry_m['values'] = self.month
         self.plan_date_label_y = tk.Label(row2_cf, text='год', padx=20)
         self.year = tk.IntVar()
         self.plan_date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2029,
@@ -670,7 +674,8 @@ class PreviewForm(PaymentFrame):
         self.initiator_box.set('Все')
         self.mvz_box.set('Все')
         self.office_box.set('Все')
-        self.plan_date_entry_m.current(datetime.now().month)
+        #self.plan_date_entry_m.current(datetime.now().month)
+        self.plan_date_entry_m.set_default_option()
         self.year.set(datetime.now().year)
         self.sumtotal_from.set('0,00')
         self.sumtotal_to.set('')
@@ -749,7 +754,7 @@ class PreviewForm(PaymentFrame):
         self.plan_date_label_m.pack(side=tk.LEFT)
         self.plan_date_entry_m.pack(side=tk.LEFT)
         self.plan_date_label_y.pack(side=tk.LEFT)
-        self.plan_date_entry_y.pack(side=tk.LEFT, anchor=tk.SW, pady=5)
+        self.plan_date_entry_y.pack(side=tk.LEFT, anchor=tk.SW, pady=10)
         self.nds0.pack(side=tk.RIGHT, padx=7)
         self.nds7.pack(side=tk.RIGHT, padx=7)
         self.nds20.pack(side=tk.RIGHT, padx=7)
@@ -766,7 +771,7 @@ class PreviewForm(PaymentFrame):
                    'mvz': self.mvzSAP[self.mvz_box.current()],
                    'office': (self.office_box.current() and
                               self.office[self.office_box.current()]),
-                   'plan_date_m': self.plan_date_entry_m.current(),
+                   'plan_date_m': self.plan_date_entry_m.get_selected(),
                    'plan_date_y': self.year.get() if self.plan_date_entry_y.get() else 0.,
                    'sumtotal_from': float(self.sumtotal_from.get_float_form()
                                           if self.sum_entry_from.get() else 0),
@@ -775,6 +780,11 @@ class PreviewForm(PaymentFrame):
                    'nds':  self.nds.get(),
                    'just_for_approval': self.show_for_approve.get()
                    }
+        if not filters['plan_date_m']:
+            messagebox.showerror(
+                    self.controller.title(), 'Не выбран месяц'
+            )
+            return
         self.rows = self.conn.get_paymentslist(self.user_info, **filters)
         self._show_rows(self.rows)
 
