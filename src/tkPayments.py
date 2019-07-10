@@ -245,11 +245,15 @@ class CreateForm(PaymentFrame):
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
 
-        main_label = tk.Label(top, text='Форма создания заявки на согласование',
+        self.main_label = tk.Label(top, text='Форма создания заявки на согласование',
                               padx=10, font=('Calibri', 10, 'bold'))
-        main_label.pack(side=tk.LEFT, expand=False, anchor=tk.NW)
 
+        self.limit_label = tk.Label(top, text='Оставшийся лимит     —',
+                              padx=10, font=('Calibri', 10), fg='#003db9')
+        self.limit_month = tk.Label(top, text='', font=('Calibri', 10))
+        self.limit_sum = tk.Label(top, text='', font=('Calibri', 10, 'bold'))
         self._add_user_label(top)
+        self._top_pack()
 
         # First Fill Frame with (MVZ, office)
         row1_cf = tk.Frame(self, name='row1_cf', padx=15)
@@ -258,13 +262,12 @@ class CreateForm(PaymentFrame):
         self.mvz_current = tk.StringVar()
         #self.mvz_current.set(self.mvznames[0]) # default value
         self.mvz_box = ttk.OptionMenu(row1_cf, self.mvz_current, '', *self.mvz.keys(),
-                                      command = self._choose_mvz)
+                                      command=self._choose_mvz)
         self.mvz_box.config(width=40)
         self.mvz_sap = tk.Label(row1_cf, padx=6, bg='lightgray', width=11)
         self.office_label = tk.Label(row1_cf, text='Офис', padx=10)
         self.office_box = ttk.Combobox(row1_cf, width=20, state='disabled')
 
-        # Pack row1_cf
         self._row1_pack()
 
         # Second Fill Frame with (contragent, CSP)
@@ -273,22 +276,24 @@ class CreateForm(PaymentFrame):
         self.contragent_label = tk.Label(row2_cf, text='Контрагент', padx=10)
         self.contragent_entry = tk.Entry(row2_cf, width=30)
         self.csp = tk.Label(row2_cf, text='CSP', padx=10)
-        self.csp_entry = tk.Entry(row2_cf, width=60)
+        self.csp_entry = tk.Entry(row2_cf, width=58)
 
-        # Pack row2_cf
         self._row2_pack()
 
         # Second Fill Frame with (Plan date, Sum, Tax)
         row3_cf = tk.Frame(self, name='row3_cf', padx=15)
 
         self.plan_date_label = tk.Label(row3_cf, text='Плановая дата', padx=10)
+        self.plan_date = tk.StringVar()
+        self.plan_date.trace("w", self._check_limit)
         self.plan_date_entry = DateEntry(row3_cf, width=12, state='readonly',
-                    font=('Calibri', 10), selectmode='day', borderwidth=2)
-        self.sum_label = tk.Label(row3_cf, text='Сумма без НДС', padx=20)
+                                         textvariable=self.plan_date, font=('Calibri', 10),
+                                         selectmode='day', borderwidth=2)
+        self.sum_label = tk.Label(row3_cf, text='Сумма без НДС, грн')
         self.sumtotal = StringSumVar()
         self.sumtotal.set('0,00')
         vcmd = (self.register(self._validate_sum))
-        self.sum_entry = tk.Entry(row3_cf, name='sum_entry', width=20,
+        self.sum_entry = tk.Entry(row3_cf, name='sum_entry', width=16,
                                   textvariable=self.sumtotal, validate='all',
                                   validatecommand=(vcmd, '%P')
                                   )
@@ -301,7 +306,6 @@ class CreateForm(PaymentFrame):
         self.nds7 = ttk.Radiobutton(row3_cf, text="7 %", variable=self.nds, value=7)
         self.nds0 = ttk.Radiobutton(row3_cf, text="0 %", variable=self.nds, value=0)
 
-        # Pack row3_cf
         self._row3_pack()
 
         # Text Frame
@@ -333,6 +337,15 @@ class CreateForm(PaymentFrame):
         row3_cf.pack(side=tk.TOP, fill=tk.X)
         text_cf.pack(side=tk.TOP, fill=tk.X, expand=True, padx=10, pady=5)
 
+    def _check_limit(self, *args, **kwargs):
+        plan_date = self.plan_date.get()
+        if not plan_date:
+            return
+        limit = self.conn.get_limit_for_month_by_date(self.userID, plan_date)
+        self.limit_month.configure(text=self._convert_date_to_BY(plan_date) + ': ')
+        self.limit_sum.configure(text=self._format_float(limit) + ' грн.')
+        self.limit_sum.configure(fg=('black' if limit else 'red'))
+
     def _choose_mvz(self, event):
         self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0])
         offices = self.mvz[self.mvz_current.get()][1]
@@ -351,11 +364,19 @@ class CreateForm(PaymentFrame):
         self.office_box.configure(state="disabled")
         self.contragent_entry.delete(0, tk.END)
         self.csp_entry.delete(0, tk.END)
-        self.plan_date_entry.delete(0, tk.END)
         self.sumtotal.set('0,00')
         self.nds.set(20)
         self.desc_text.delete("1.0", tk.END)
         self.plan_date_entry.set_date(datetime.now())
+
+    def _convert_date_to_BY(self, date):
+        """ Take plan_date and convert it into format "Month_name Year"
+        """
+        try:
+            dat = datetime.strptime(date, '%d.%m.%y')
+        except ValueError:
+            dat = datetime.strptime(date, '%d.%m.%Y')
+        return dat.strftime("%B %Y")
 
     def _create_request(self):
         messagetitle = 'Создание заявки'
@@ -393,12 +414,7 @@ class CreateForm(PaymentFrame):
             self._clear()
             self.controller._show_frame('PreviewForm')
         elif created_success == 0:
-            # Take plan_date and convert it into format "Month_name Year"
-            try:
-                dat = datetime.strptime(request['plan_date'], '%d.%m.%y')
-            except ValueError:
-                dat = datetime.strptime(request['plan_date'], '%d.%m.%Y')
-            dat = dat.strftime("%B %Y")
+            dat = self._convert_date_to_BY(request['plan_date'])
             messagebox.showerror(
                     messagetitle,
                     'Превышен лимит суммы на {}.\n'
@@ -439,9 +455,15 @@ class CreateForm(PaymentFrame):
         self.nds0.pack(side=tk.RIGHT, padx=7)
         self.nds7.pack(side=tk.RIGHT, padx=7)
         self.nds20.pack(side=tk.RIGHT, padx=8)
-        self.nds_label.pack(side=tk.RIGHT, padx=5)
-        self.sum_entry.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.nds_label.pack(side=tk.RIGHT)
+        self.sum_entry.pack(side=tk.RIGHT, padx=11, pady=5)
         self.sum_label.pack(side=tk.RIGHT)
+
+    def _top_pack(self):
+        self.main_label.pack(side=tk.TOP, expand=False, anchor=tk.NW)
+        self.limit_label.pack(side=tk.LEFT, expand=False, anchor=tk.W)
+        self.limit_month.pack(side=tk.LEFT, expand=False, anchor=tk.W)
+        self.limit_sum.pack(side=tk.LEFT, expand=False, anchor=tk.W)
 
     def _validate_plan_date(self):
         date = self.plan_date_entry.get()
@@ -674,7 +696,6 @@ class PreviewForm(PaymentFrame):
         self.initiator_box.set('Все')
         self.mvz_box.set('Все')
         self.office_box.set('Все')
-        #self.plan_date_entry_m.current(datetime.now().month)
         self.plan_date_entry_m.set_default_option()
         self.year.set(datetime.now().year)
         self.sumtotal_from.set('0,00')

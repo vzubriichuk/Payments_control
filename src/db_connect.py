@@ -104,6 +104,14 @@ class DBConnect(object):
         return self.__cursor.fetchall()
 
     @monitor_network_state
+    def get_limit_for_month_by_date(self, UserID, date):
+        query = '''
+        exec payment.get_limit_for_month_by_date @UserID = ?, @date = ?
+        '''
+        self.__cursor.execute(query, UserID, date)
+        return self.__cursor.fetchone()[0]
+
+    @monitor_network_state
     def get_limits_info(self):
         query = '''
         select UserID, UserName, userCreateRequestLimit, resetCreateRequestLimit
