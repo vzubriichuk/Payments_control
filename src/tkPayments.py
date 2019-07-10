@@ -806,6 +806,7 @@ class PreviewForm(PaymentFrame):
             curRow = self.table.focus()
             if curRow:
                 newlevel = tk.Toplevel(self.parent)
+                newlevel.withdraw()
                 newlevel.transient(self)  # disable minimize/maximize buttons
                 newlevel.title('Заявка детально')
                 newlevel.iconbitmap('../resources/preview.ico')
@@ -821,6 +822,7 @@ class PreviewForm(PaymentFrame):
                                     self.table.item(curRow).get('values'))
                 newlevel.resizable(width=False, height=False)
                 self._center_popup_window(newlevel, 500, 400)
+                newlevel.deiconify()
                 newlevel.focus()
                 newlevel.grab_set()
         else:

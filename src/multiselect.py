@@ -19,8 +19,6 @@ class MultiselectMenu(tk.Frame):
         super().__init__(parent, *args, **kwargs)
         self.default_option = default_option
         self.options = options
-#        s = ttk.Style()
-#        s.configure("TMenubutton", background="white")
 
         self.menubutton = ttk.Menubutton(self, text=default_option)
         menu = tk.Menu(self.menubutton, tearoff=False)
