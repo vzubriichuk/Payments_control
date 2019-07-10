@@ -574,7 +574,7 @@ class PreviewForm(PaymentFrame):
             'CSP':60, 'МВЗ SAP': 60, 'МВЗ': 150, 'Офис': 100, 'Контрагент': 60,
             'Плановая дата': 90, 'Сумма без НДС': 85, 'Сумма с НДС': 85,
             'Статус': 40, 'Статус заявки': 120, 'Описание': 120,
-            'Утверждающий': 120}
+            'ID Утверждающего': 0, 'Утверждающий': 120}
 
         self.table = ttk.Treeview(preview_cf, show='headings',
                                   selectmode=self.selectmode,
@@ -646,7 +646,7 @@ class PreviewForm(PaymentFrame):
             request = self.table.item(curRow).get('values')
             # extract all approvable requests for current user
             if request[-1] == self.user_info.ShortUserName:
-                to_approve[request[0]] = float(request[-6].replace(' ', '')
+                to_approve[request[0]] = float(request[-7].replace(' ', '')
                                                           .replace(',', '.'))
         if not to_approve:
             return
@@ -706,13 +706,21 @@ class PreviewForm(PaymentFrame):
                 'При экспорте произошла непредвиденная ошибка'
             )
 
+    def _is_valid_approval(self, approvalID):
+        """ Check if current user is approval person.
+            Treat users with ID 24 and 9 as the same person.
+        """
+        userID = (9 if self.userID == 24 else self.userID)
+        approvalID = (9 if approvalID == 24 else approvalID)
+        return (userID == approvalID and (self.user_info.AccessType == 2
+                                          or self.user_info.isSuperUser == 1))
 
     def _init_table(self, parent):
         if isinstance(self.headings, dict):
             self.table["columns"] = tuple(self.headings.keys())
             self.table["displaycolumns"] = tuple(k for k in self.headings.keys()
                 if k not in ('ID', 'НДС', 'Описание', 'Дата/время создания',
-                             'МВЗ', 'Статус заявки', 'InitiatorID'))
+                    'МВЗ', 'Статус заявки', 'InitiatorID', 'ID Утверждающего'))
             for head, width in self.headings.items():
                 self.table.heading(head, text=head, anchor=tk.CENTER)
                 self.table.column(head, width=width, anchor=tk.CENTER)
@@ -801,11 +809,9 @@ class PreviewForm(PaymentFrame):
                 newlevel.transient(self)  # disable minimize/maximize buttons
                 newlevel.title('Заявка детально')
                 newlevel.iconbitmap('../resources/preview.ico')
-                approval = self.table.item(curRow).get('values')[-1]
-                # check if current user is approval person
-                if self.user_info.ShortUserName == approval and (
-                        self.user_info.AccessType == 2
-                        or self.user_info.isSuperUser == 1):
+                approvalID = self.table.item(curRow).get('values')[-2]
+                is_valid_approval = self._is_valid_approval(approvalID)
+                if is_valid_approval:
                     ApproveConfirmation(newlevel, self, self.conn, self.userID,
                                         self.headings,
                                         self.table.item(curRow).get('values'))
@@ -841,7 +847,7 @@ class PreviewForm(PaymentFrame):
             self.table.insert('', tk.END,
                               values=tuple(map(lambda val: self._format_float(val)
                                if isinstance(val, Decimal) else val, row)),
-                              tags=(row[-4],))
+                              tags=(row[-5],))
 
 
 class DetailedPreview(tk.Frame):
@@ -864,7 +870,7 @@ class DetailedPreview(tk.Frame):
         fonts = (('Calibri', 12, 'bold'), ('Calibri', 12))
         for row in zip(range(len(head)), zip(head, info)):
             if row[1][0] not in ('ID', 'InitiatorID', 'Дата создания',
-                                 'Утверждающий', 'Статус'):
+                                 'ID Утверждающего', 'Утверждающий', 'Статус'):
                 self._newRow(self.table_frame, fonts, *row)
 
         self.appr_label = tk.Label(self.top, text='Утверждающие',
@@ -1049,7 +1055,7 @@ if __name__ == '__main__':
     with DBConnect(server='s-kv-center-s59', db='LogisticFinance') as sql:
         try:
             app = PaymentApp(connection=sql,
-                             user_info=UserInfo(76, 'TestName', 2, 1),
+                             user_info=UserInfo(24, 'TestName', 2, 1),
                              mvz=[('20511RC191', '20511RC191', 'Офис'),
                                   ('40900A2595', '40900A2595', 'Офис')],
                              allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)]

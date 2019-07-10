@@ -98,15 +98,8 @@ class DBConnect(object):
     @monitor_network_state
     def get_approvals(self, paymentID):
         query = '''
-        select pappr.ShortUserName as approval,
-        case appr.is_approved when 0 then 'Отклонил(-а) ' + CONVERT(nvarchar, date_modified, 20)
-                              when 1 then 'Утвердил(-а) ' + CONVERT(nvarchar, date_modified, 20)
-                              else '' end as status
-        from payment.PaymentsApproval appr
-            join payment.People pappr on appr.UserID = pappr.UserID
-        where appr.PaymentID = ?
-        order by approval_order ASC
-            '''
+        exec payment.get_approvals @paymentID = ?
+        '''
         self.__cursor.execute(query, paymentID)
         return self.__cursor.fetchall()
 
@@ -159,7 +152,7 @@ class DBConnect(object):
            isnull(CSP, '') as CSP, obj.MVZsap, co.FullName, obj.ServiceName,
            isnull(Contragent, '') as Contragent, date_planed,
            SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
-           p.ValueName as StatusName, p.ValueDescription, pl.Description,
+           p.ValueName as StatusName, p.ValueDescription, pl.Description, appr.UserID,
            case when pl.StatusID = 1 then isnull(pappr.ShortUserName, '') else '' end as approval
         from payment.PaymentsList pl
         join payment.ObjectsList obj on pl.ObjectID = obj.ID
