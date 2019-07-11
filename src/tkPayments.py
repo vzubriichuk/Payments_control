@@ -667,7 +667,7 @@ class PreviewForm(PaymentFrame):
         for curRow in curItems:
             request = self.table.item(curRow).get('values')
             # extract all approvable requests for current user
-            if request[-1] == self.user_info.ShortUserName:
+            if self._is_valid_approval(request[-2]):
                 to_approve[request[0]] = float(request[-7].replace(' ', '')
                                                           .replace(',', '.'))
         if not to_approve:
