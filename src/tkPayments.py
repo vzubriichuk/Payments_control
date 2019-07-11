@@ -1003,18 +1003,24 @@ class AlterLimits(tk.Frame):
         self.parent = parent
         self.conn = conn
         self.limits = self.conn.get_limits_info()
+        # {Column name: width}
+        self.headings = {'UserID': 6, 'Инициатор': 41,
+                         'Лимит': 9, 'Обнулять': 8}
+
+        # Bottom Frame with buttons
+        self.top = tk.Frame(self, name='top_al')
+        for j, (header, width) in enumerate(self.headings.items()):
+            lb = tk.Label(self.top, text=header, font=('Calibri', 10, 'bold'),
+                          relief='sunken', borderwidth=1, width=width)
+            lb.grid(row=0, column=j, ipadx=5, sticky='nswe')
 
         # Top Canvas Frame to connect Frame and Scrollbar
         self.canvas = tk.Canvas(self, borderwidth=0, background="#ffffff",
                                 width=500, height=200)
 
-        # {Column name: width}
-        self.headings = {'UserID': 3, 'Инициатор': 40,
-                         'Лимит': 8, 'Обнулять': 8}
-
         self.table = LabelGrid(self.canvas,
-                               headers=self.headings,
-                               content=self.limits
+                               content=self.limits,
+                               grid_width = (8, 42, 12, 50)
                                )
 
         self.scrolltable = tk.Scrollbar(self, orient="vertical",
@@ -1042,6 +1048,7 @@ class AlterLimits(tk.Frame):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def _pack_frames(self):
+        self.top.pack(side=tk.TOP, fill=tk.X, expand=False, padx=4, pady=2)
         self.bottom.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
         self.scrolltable.pack(side=tk.RIGHT, fill=tk.Y)
         self.canvas.pack(side="left", fill="both", expand=True)

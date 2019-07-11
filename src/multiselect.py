@@ -12,7 +12,7 @@ class MultiselectMenu(tk.Frame):
         Class that provides multiselection from options.
         "Default_option" is an option name from "options".
         "Options" should be an iterable.
-        "Width" - int that cinfigures width of menubutton.
+        "Width" - int, configures width of menubutton.
     """
     def __init__(self, parent, default_option, options, width,
                  *args, **kwargs):
