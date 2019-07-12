@@ -7,6 +7,7 @@ Created on Wed May 15 22:11:05 2019
 from collections import namedtuple
 from db_connect import DBConnect
 from log_error import writelog
+from os import path
 from pyodbc import Error as SQLError
 from singleinstance import Singleinstance
 import sys
@@ -39,17 +40,17 @@ def main():
             app.mainloop()
 
     except SQLError as e:
-        writelog(e)
         # login failed
         if e.args[0] == '42000':
+            writelog(e)
             tkp.LoginError()
         else:
-            print(e)  # what to do?
+            raise
 
 
 if __name__ == '__main__':
     try:
-        fname = __file__.split('/')[-1]
+        fname = path.basename(__file__)
         myapp = Singleinstance(fname)
         if myapp.aleradyrunning():
             sys.exit()
@@ -57,6 +58,5 @@ if __name__ == '__main__':
     except Exception as e:
         writelog(e)
         print(e)
-        raise
     finally:
         sys.exit()
