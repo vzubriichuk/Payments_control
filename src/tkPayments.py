@@ -192,11 +192,20 @@ class PaymentApp(tk.Tk):
 
 
 class PaymentFrame(tk.Frame):
-    def __init__(self, parent, controller, connection, user_info):
+    def __init__(self, parent, controller, connection, user_info, mvz):
         super().__init__(parent)
         self.parent = parent
         self.controller = controller
         self.conn = connection
+        # {mvzSAP: [mvzname, [office1, office2, ...]], ...}
+        self.mvz = {}
+        if isinstance(self, PreviewForm):
+            self.mvz['Все'] = (None, ('Все',))
+        for mvzSAP, mvzname, office in mvz:
+            try:
+                self.mvz[mvzname][1].append(office)
+            except KeyError:
+                self.mvz[mvzname] = [mvzSAP, [office]]
         self.user_info = user_info
         # Often used info
         self.userID = user_info.UserID
@@ -235,15 +244,7 @@ class PaymentFrame(tk.Frame):
 class CreateForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info,
                  mvz, **kwargs):
-        super().__init__(parent, controller, connection, user_info)
-        # {mvzSAP: [mvzname, [office1, office2, ...]], ...}
-        self.mvz = {}
-        for mvzSAP, mvzname, office in mvz:
-            try:
-                self.mvz[mvzname][1].append(office)
-            except KeyError:
-                self.mvz[mvzname] = [mvzSAP, [office]]
-
+        super().__init__(parent, controller, connection, user_info, mvz)
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
 
@@ -480,9 +481,9 @@ class CreateForm(PaymentFrame):
 class PreviewForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info, mvz,
                  allowed_initiators, **kwargs):
-        super().__init__(parent, controller, connection, user_info)
-        self.mvznames, self.mvzSAP, self.office = zip(*[('Все', None, 'Все'),] + mvz)
-        self.office = tuple(sorted(set(self.office),
+        super().__init__(parent, controller, connection, user_info, mvz)
+        self.office = tuple(sorted(set(x for lst in map(lambda v: v[1],
+                                                        self.mvz.values()) for x in lst),
                                    key=lambda s: '' if s == 'Все' else s))
         self.initiatorsID, self.initiators = zip(*allowed_initiators)
         # Selectmode for treeview
@@ -518,8 +519,8 @@ class PreviewForm(PaymentFrame):
         self.initiator_box['values'] = self.initiators
 
         self.mvz_label = tk.Label(row1_cf, text='МВЗ', padx=10)
-        self.mvz_box = ttk.Combobox(row1_cf, width=35, state='readonly')
-        self.mvz_box['values'] = self.mvznames
+        self.mvz_box = ttk.Combobox(row1_cf, width=45, state='readonly')
+        self.mvz_box['values'] = list(self.mvz)
 
         self.office_label = tk.Label(row1_cf, text='Офис', padx=20)
         self.office_box = ttk.Combobox(row1_cf, width=20, state='readonly')
@@ -799,7 +800,7 @@ class PreviewForm(PaymentFrame):
     def _refresh(self):
         """ Extract information from filters. """
         filters = {'initiator': self.initiatorsID[self.initiator_box.current()],
-                   'mvz': self.mvzSAP[self.mvz_box.current()],
+                   'mvz': self.mvz[self.mvz_box.get()][0],
                    'office': (self.office_box.current() and
                               self.office[self.office_box.current()]),
                    'plan_date_m': self.plan_date_entry_m.get_selected(),
