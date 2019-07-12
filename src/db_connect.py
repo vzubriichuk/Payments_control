@@ -9,7 +9,7 @@ from tkPayments import NetworkError
 import pyodbc
 
 def monitor_network_state(method):
-    """ Show error message in case of network error
+    """ Show error message in case of network error.
     """
     @wraps(method)
     def wrapper(self, *args, **kwargs):
@@ -114,7 +114,9 @@ class DBConnect(object):
     @monitor_network_state
     def get_limits_info(self):
         query = '''
-        select UserID, UserName, userCreateRequestLimit, resetCreateRequestLimit
+        select UserID, UserName,
+               cast(userCreateRequestLimit as float) as userCreateRequestLimit,
+               resetCreateRequestLimit
         from payment.People
         where AccessType in (1, 2)
             or isSuperUser = 1

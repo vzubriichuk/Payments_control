@@ -65,7 +65,8 @@ class NetworkError(tk.Tk):
 
 class StringSumVar(tk.StringVar):
     """ Contains function that returns var formatted in a such way, that
-    it can be converted into a float without an error"""
+        it can be converted into a float without an error.
+    """
     def get_float_form(self, *args, **kwargs):
         return super().get(*args, **kwargs).replace(' ', '').replace(',', '.')
 
@@ -160,8 +161,7 @@ class PaymentApp(tk.Tk):
         frame._fill_from_PreviewForm(МВЗ, Офис, Контрагент)
 
     def _show_frame(self, frame_name):
-        """ Show a frame for the given frame name
-        """
+        """ Show a frame for the given frame name. """
         if frame_name == 'CreateForm':
             self.resizable(width=False, height=False)
         else:
@@ -178,7 +178,9 @@ class PaymentApp(tk.Tk):
             self.active_frame = frame_name
 
     def _create_request(self, event):
-        "Creates request when hotkey is pressed if active_frame is CreateForm"
+        """
+        Creates request when hotkey is pressed if active_frame is CreateForm.
+        """
         if self.active_frame == 'CreateForm':
             self._frames[self.active_frame]._create_request()
 
@@ -212,7 +214,7 @@ class PaymentFrame(tk.Frame):
         event.widget.setvar(varname, sum_entry)
 
     def _on_focus_out_format_sum(self, event):
-        """ Function to be bind to focus out of self.sum_entry"""
+        """ Function to be bind to focus out of self.sum_entry. """
         if not event.widget.get().replace(',', '.'):
             return
         sum_entry = float(event.widget.get().replace(',', '.'))
@@ -220,7 +222,7 @@ class PaymentFrame(tk.Frame):
         event.widget.setvar(varname, self._format_float(sum_entry))
 
     def _validate_sum(self, sum_entry):
-        """ Validation of self.sum_entry"""
+        """ Validation of self.sum_entry. """
         sum_entry = sum_entry.replace(',', '.').replace(' ', '')
         try:
             if not sum_entry or 0 <= float(sum_entry) < 10**9:
@@ -370,7 +372,7 @@ class CreateForm(PaymentFrame):
         self.plan_date_entry.set_date(datetime.now())
 
     def _convert_date_to_BY(self, date):
-        """ Take plan_date and convert it into format "Month_name Year"
+        """ Take plan_date and convert it into format "Month_name Year".
         """
         try:
             dat = datetime.strptime(date, '%d.%m.%y')
@@ -795,7 +797,7 @@ class PreviewForm(PaymentFrame):
         self.sum_label_from.pack(side=tk.RIGHT, padx=2)
 
     def _refresh(self):
-        """ Extract information from filters """
+        """ Extract information from filters. """
         filters = {'initiator': self.initiatorsID[self.initiator_box.current()],
                    'mvz': self.mvzSAP[self.mvz_box.current()],
                    'office': (self.office_box.current() and
@@ -822,7 +824,7 @@ class PreviewForm(PaymentFrame):
         self.table.selection_set(all_items)
 
     def _show_detail(self, event=None):
-        """ Show details when double-clicked on row """
+        """ Show details when double-clicked on row. """
         if not event or event.y > 19:
             curRow = self.table.focus()
             if curRow:
@@ -863,7 +865,7 @@ class PreviewForm(PaymentFrame):
             self._show_rows(self.rows)
 
     def _show_rows(self, rows):
-        """ Refresh table with new rows """
+        """ Refresh table with new rows. """
         self.table.delete(*self.table.get_children())
         for row in rows:
             # tag = (Status,)
@@ -946,7 +948,7 @@ class DetailedPreview(tk.Frame):
             self.parent.destroy()
 
     def _newRow(self, frame, fonts, rowNumber, info):
-        """ Adds a new line to the table """
+        """ Adds a new line to the table. """
 
         numberOfLines = []       # List to store number of lines needed
         columnWidths = [20, 50]  # Width of the different columns in the table
@@ -1044,7 +1046,7 @@ class AlterLimits(tk.Frame):
         self._pack_frames()
 
     def _onFrameConfigure(self, event):
-        '''Reset the scroll region to encompass the inner frame'''
+        """ Reset the scroll region to encompass the inner frame. """
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def _pack_frames(self):
