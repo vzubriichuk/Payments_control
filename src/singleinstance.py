@@ -10,8 +10,8 @@ from winerror import ERROR_ALREADY_EXISTS
 
 class Singleinstance:
     """ Limits application to single instance """
-    def __init__(self):
-        self.mutexname = "testmutex_{D0E858DF-985E-4907-B7FB-8D732C3FC3B9}"
+    def __init__(self, mutexname):
+        self.mutexname = "{}_{{D0E858DF-985E-4907-B7FB-8D732C3FC3B9}}".format(mutexname)
         self.mutex = CreateMutex(None, False, self.mutexname)
         self.lasterror = GetLastError()
 

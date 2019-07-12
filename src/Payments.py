@@ -49,7 +49,8 @@ def main():
 
 if __name__ == '__main__':
     try:
-        myapp = Singleinstance()
+        fname = __file__.split('/')[-1]
+        myapp = Singleinstance(fname)
         if myapp.aleradyrunning():
             sys.exit()
         main()
