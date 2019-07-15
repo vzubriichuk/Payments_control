@@ -76,6 +76,8 @@ class PaymentApp(tk.Tk):
         super().__init__()
         self.title('Заявки на оплату')
         self.iconbitmap('../resources/payment.ico')
+        # store the state of PreviewForm
+        self.state_PreviewForm = 'normal'
         # geometry_storage {Framename:(width, height)}
         self._geometry = {'PreviewForm': (1200, 600),
                           'CreateForm': (750, 400)}
@@ -163,8 +165,13 @@ class PaymentApp(tk.Tk):
     def _show_frame(self, frame_name):
         """ Show a frame for the given frame name. """
         if frame_name == 'CreateForm':
+            # since we have only two forms, when we activating CreateForm
+            # we know by exception that PreviewForm is active
+            self.state_PreviewForm = self.state()
+            self.state('normal')
             self.resizable(width=False, height=False)
         else:
+            self.state(self.state_PreviewForm)
             self.resizable(width=True, height=True)
         frame = self._frames[frame_name]
         frame.tkraise()
