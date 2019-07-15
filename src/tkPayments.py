@@ -344,8 +344,8 @@ class CreateForm(PaymentFrame):
         plan_date = self.plan_date.get()
         if not plan_date:
             return
-        limit = self.conn.get_limit_for_month_by_date(self.userID, plan_date)
-        self.limit_month.configure(text=self._convert_date_to_BY(plan_date) + ': ')
+        limit = self.conn.get_limit_for_month_by_date(self.userID, self._convert_date(plan_date))
+        self.limit_month.configure(text=self._convert_date(plan_date, output="%B %Y") + ': ')
         self.limit_sum.configure(text=self._format_float(limit) + ' грн.')
         self.limit_sum.configure(fg=('black' if limit else 'red'))
 
@@ -372,14 +372,20 @@ class CreateForm(PaymentFrame):
         self.desc_text.delete("1.0", tk.END)
         self.plan_date_entry.set_date(datetime.now())
 
-    def _convert_date_to_BY(self, date):
-        """ Take plan_date and convert it into format "Month_name Year".
+    def _convert_date(self, date, output=None):
+        """ Take date and convert it into output format.
+            If output is None datetime object is returned.
+
+            date: str in format '%d.%m.%y' or '%d.%m.%Y'.
+            output: str or None, output format.
         """
         try:
             dat = datetime.strptime(date, '%d.%m.%y')
         except ValueError:
             dat = datetime.strptime(date, '%d.%m.%Y')
-        return dat.strftime("%B %Y")
+        if output:
+            return dat.strftime(output)
+        return dat
 
     def _create_request(self):
         messagetitle = 'Создание заявки'
@@ -417,7 +423,7 @@ class CreateForm(PaymentFrame):
             self._clear()
             self.controller._show_frame('PreviewForm')
         elif created_success == 0:
-            dat = self._convert_date_to_BY(request['plan_date'])
+            dat = self._convert_date(request['plan_date'], output="%B %Y")
             messagebox.showerror(
                     messagetitle,
                     'Превышен лимит суммы на {}.\n'
