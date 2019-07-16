@@ -159,6 +159,7 @@ class PaymentApp(tk.Tk):
         self.geometry('{}x{}+{}+{}'.format(w, h, start_x, start_y))
 
     def _fill_CreateForm(self, МВЗ, Офис, Контрагент, **kwargs):
+        """ Control function to transfer data from Preview- to CreateForm. """
         frame = self._frames['CreateForm']
         frame._fill_from_PreviewForm(МВЗ, Офис, Контрагент)
 
@@ -218,6 +219,7 @@ class PaymentFrame(tk.Frame):
         self.userID = user_info.UserID
 
     def _add_user_label(self, parent):
+        """ Adds user name in top right corner. """
         user_label = tk.Label(parent, text=self.user_info.ShortUserName, padx=10)
         user_label.pack(side=tk.RIGHT, anchor=tk.NE)
 
@@ -225,12 +227,15 @@ class PaymentFrame(tk.Frame):
         return '{:,.2f}'.format(sum_float).replace(',', ' ').replace('.', ',')
 
     def _on_focus_in_format_sum(self, event):
+        """ Convert str into float in binded to entry variable when focus in.
+        """
         varname = str(event.widget.cget("textvariable"))
         sum_entry = event.widget.get().replace(' ', '')
         event.widget.setvar(varname, sum_entry)
 
     def _on_focus_out_format_sum(self, event):
-        """ Function to be bind to focus out of self.sum_entry. """
+        """ Convert float into str in binded to entry variable when focus out.
+        """
         if not event.widget.get().replace(',', '.'):
             return
         sum_entry = float(event.widget.get().replace(',', '.'))
@@ -238,7 +243,7 @@ class PaymentFrame(tk.Frame):
         event.widget.setvar(varname, self._format_float(sum_entry))
 
     def _validate_sum(self, sum_entry):
-        """ Validation of self.sum_entry. """
+        """ Validation of entries that contains sum. """
         sum_entry = sum_entry.replace(',', '.').replace(' ', '')
         try:
             if not sum_entry or 0 <= float(sum_entry) < 10**9:
@@ -272,7 +277,7 @@ class CreateForm(PaymentFrame):
         self.mvz_current = tk.StringVar()
         #self.mvz_current.set(self.mvznames[0]) # default value
         self.mvz_box = ttk.OptionMenu(row1_cf, self.mvz_current, '', *self.mvz.keys(),
-                                      command=self._choose_mvz)
+                                      command=self._restraint_by_mvz)
         self.mvz_box.config(width=40)
         self.mvz_sap = tk.Label(row1_cf, padx=6, bg='lightgray', width=11)
         self.office_label = tk.Label(row1_cf, text='Офис', padx=10)
@@ -348,6 +353,8 @@ class CreateForm(PaymentFrame):
         text_cf.pack(side=tk.TOP, fill=tk.X, expand=True, padx=10, pady=5)
 
     def _check_limit(self, *args, **kwargs):
+        """ Show remaining limit for month corresponding to month of plan_date.
+        """
         plan_date = self.plan_date.get()
         if not plan_date:
             return
@@ -356,7 +363,10 @@ class CreateForm(PaymentFrame):
         self.limit_sum.configure(text=self._format_float(limit) + ' грн.')
         self.limit_sum.configure(fg=('black' if limit else 'red'))
 
-    def _choose_mvz(self, event):
+    def _restraint_by_mvz(self, event):
+        """ Shows mvz_sap that corresponds to chosen MVZ and restraint offices.
+            If 1 office is available, choose it, otherwise make box active.
+        """
         self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0])
         offices = self.mvz[self.mvz_current.get()][1]
         if len(offices) == 1:
@@ -655,7 +665,7 @@ class PreviewForm(PaymentFrame):
                          command=self._export_to_excel)
         bt4.pack(side=tk.RIGHT, padx=10, pady=10)
 
-        if user_info.isSuperUser and user_info.AccessType == 2:
+        if self.userID in (9, 24, 76):
             bt4a = ttk.Button(bottom_cf, text="Изменить лимиты", width=20,
                              command=self._alter_limits)
             bt4a.pack(side=tk.RIGHT, padx=10, pady=10)
@@ -665,6 +675,7 @@ class PreviewForm(PaymentFrame):
         preview_cf.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=5)
 
     def _alter_limits(self):
+        """ Create and raise new frame with limits. """
         newlevel = tk.Toplevel(self.parent)
         newlevel.transient(self)  # disable minimize/maximize buttons
         newlevel.title('Изменение лимитов')
@@ -675,6 +686,8 @@ class PreviewForm(PaymentFrame):
         newlevel.grab_set()
 
     def  _approve_multiple(self):
+        """ Allows to approve multiple requests chosen in PreviewForm.
+        """
         curItems = self.table.selection()
         if not curItems:
             return
@@ -720,6 +733,7 @@ class PreviewForm(PaymentFrame):
         self.show_for_approve.set(0)
 
     def _create_from_current(self):
+        """ Raises CreateForm with partially filled labels/entries. """
         curRow = self.table.focus()
         if curRow:
             # extract info to be putted in CreateForm
@@ -753,6 +767,7 @@ class PreviewForm(PaymentFrame):
                                           or self.user_info.isSuperUser == 1))
 
     def _init_table(self, parent):
+        """ Creates treeview. """
         if isinstance(self.headings, dict):
             self.table["columns"] = tuple(self.headings.keys())
             self.table["displaycolumns"] = tuple(k for k in self.headings.keys()
@@ -784,6 +799,7 @@ class PreviewForm(PaymentFrame):
         scrolltable.pack(side=tk.RIGHT, fill=tk.Y)
 
     def _resize_columns(self):
+        """ Resize columns in treeview. """
         for head, width in self.headings.items():
             self.table.column(head, width=width)
 
@@ -890,6 +906,7 @@ class PreviewForm(PaymentFrame):
 
 
 class DetailedPreview(tk.Frame):
+    """ Class that creates Frame with information about chosen request. """
     def __init__(self, parent, parentform, conn, userID, head, info):
         super().__init__(parent)
         self.parent = parent
@@ -1001,6 +1018,8 @@ class DetailedPreview(tk.Frame):
 
 
 class ApproveConfirmation(DetailedPreview):
+    """ Class with information about reuqest that contains buttons
+        to approval/decline it. """
     def __init__(self, parent, parentform, conn, userID, head, info):
         super().__init__(parent, parentform, conn, userID, head, info)
 
@@ -1014,6 +1033,7 @@ class ApproveConfirmation(DetailedPreview):
 
 
 class AlterLimits(tk.Frame):
+    """ Creates a frame to manage user limits. """
     def __init__(self, parent, conn):
         super().__init__(parent)
         self.parent = parent
@@ -1071,6 +1091,8 @@ class AlterLimits(tk.Frame):
         self.pack()
 
     def _update(self):
+        """ Update information about limits on server.
+        """
         messagetitle = self.parent.title()
         try:
             limits = self.table.get_values()

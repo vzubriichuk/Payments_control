@@ -58,6 +58,8 @@ class DBConnect(object):
     @monitor_network_state
     def create_request(self, userID, mvz, office, contragent, csp, plan_date,
                        sumtotal, nds, text):
+        """ Executes procedure that creates new request.
+        """
         query = '''
         exec payment.create_request @UserID = ?,
                                     @MVZ = ?,
@@ -80,6 +82,8 @@ class DBConnect(object):
 
     @monitor_network_state
     def get_user_info(self):
+        """ Returns information about current user based on ORIGINAL_LOGIN().
+        """
         self.__cursor.execute("select UserID, ShortUserName, AccessType, isSuperUser \
           from payment.People \
           where UserLogin = right(ORIGINAL_LOGIN(), len(ORIGINAL_LOGIN()) - charindex( '\\' , ORIGINAL_LOGIN()))")
@@ -87,6 +91,8 @@ class DBConnect(object):
 
     @monitor_network_state
     def get_allowed_initiators(self, UserID, AccessType, isSuperUser):
+        """ Determines list of persons that should be shown in filters.
+        """
         query = '''
         exec payment.get_allowed_initiators @UserID = ?,
                                             @AccessType = ?,
@@ -97,6 +103,8 @@ class DBConnect(object):
 
     @monitor_network_state
     def get_approvals(self, paymentID):
+        """ Returns all approvals of the request with id = paymentID.
+        """
         query = '''
         exec payment.get_approvals @paymentID = ?
         '''
@@ -105,6 +113,9 @@ class DBConnect(object):
 
     @monitor_network_state
     def get_limit_for_month_by_date(self, UserID, date):
+        """ Returns remaining limit for UserID for month corresponding to
+            month of specified date.
+        """
         query = '''
         exec payment.get_limit_for_month_by_date @UserID = ?, @date = ?
         '''
@@ -113,6 +124,8 @@ class DBConnect(object):
 
     @monitor_network_state
     def get_limits_info(self):
+        """ Returns info about limits for all users.
+        """
         query = '''
         select UserID, UserName,
                cast(userCreateRequestLimit as float) as userCreateRequestLimit,
@@ -127,6 +140,8 @@ class DBConnect(object):
 
     @monitor_network_state
     def get_MVZ(self, user_info):
+        """ Returns list of available MVZ for current user.
+        """
         if user_info.isSuperUser:
             query = '''
             select obj.MVZsap, co.FullName, obj.ServiceName
@@ -152,7 +167,7 @@ class DBConnect(object):
     def get_paymentslist(self, user_info, initiator, mvz, office,
                          plan_date_m, plan_date_y, sumtotal_from, sumtotal_to,
                          nds, just_for_approval):
-        """ Generate query according to user's acces type and filters.
+        """ Generates query according to user's acces type and filters.
         """
         query = '''
         select pl.ID as ID, pl.UserID as InitiatorID,
@@ -212,6 +227,8 @@ class DBConnect(object):
 
     @monitor_network_state
     def update_confirmed(self, userID, paymentID, is_approved):
+        """ Adds information to db if paymentID has been approved.
+        """
         query = '''
         exec payment.approve_request @UserID = ?,
                                      @paymentID = ?,
@@ -222,6 +239,8 @@ class DBConnect(object):
 
     @monitor_network_state
     def update_discarded(self, discardID):
+        """ Set status of request to "discarded".
+        """
         query = '''
         UPDATE payment.PaymentsList
         SET StatusID = 2
@@ -232,6 +251,8 @@ class DBConnect(object):
 
     @monitor_network_state
     def update_limits(self, limits):
+        """ Update user limits.
+        """
         query = '''
         UPDATE payment.People
         SET resetCreateRequestLimit = ?, userCreateRequestLimit = ?

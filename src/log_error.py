@@ -9,8 +9,8 @@ from os import getcwd, path
 import time
 
 def writelog(e):
-    ''' Write error log into file log.txt.
-    '''
+    """ Write error log into file log.txt.
+    """
     fname = path.join(getcwd(), 'log.txt')
     now = time.localtime()
 
