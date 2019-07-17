@@ -204,7 +204,7 @@ class DBConnect(object):
                 query += "and obj.MVZsap = '{}'\n".format(mvz)
             if office:
                 query += "and obj.ServiceName = '{}'\n".format(office)
-            if plan_date_y:
+            if plan_date_y and all(map(str.isdigit, plan_date_y)):
                 query += "and year(date_planed) = {}\n".format(plan_date_y)
             if plan_date_m:
                 query += "and month(date_planed) in ({})\n".format(plan_date_m)
