@@ -516,9 +516,6 @@ class PreviewForm(PaymentFrame):
         self.sort_reversed_index = None  # reverse sorting for last sorted column
         self.month = list(month_name)
         self.month_default = self.month[datetime.now().month]
-        # Virtual event for treeview
-        self.event_add("<<select_all>>", "<Control-A>", "<Control-a>",
-                       "<Control-ocircumflex>", "<Control-Ocircumflex>")
 
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
@@ -609,6 +606,19 @@ class PreviewForm(PaymentFrame):
         bt3_1.pack(side=tk.RIGHT, padx=10, pady=10)
         row3_cf.pack(side=tk.TOP, fill=tk.X)
 
+        if user_info.isSuperUser and user_info.AccessType == 2:
+            # Fourth Frame (toggle select all rows, button to approve selected)
+            row4_cf = tk.Frame(filterframe, name='row4_cf', padx=15)
+            self.all_rows_checked = tk.IntVar()
+            self.check_all_rows = tk.Checkbutton(row4_cf, text="Выбрать все",
+                                      variable=self.all_rows_checked,
+                                      command=self._toggle_all_rows)
+            self.check_all_rows.pack(side=tk.LEFT)
+            bt2b = ttk.Button(row4_cf, text="Утвердить выбранные", width=25,
+                             command=self._approve_multiple)
+            bt2b.pack(side=tk.LEFT, padx=10, pady=10)
+            row4_cf.pack(side=tk.TOP, fill=tk.X)
+
         # Set all filters to default
         self._clear_filters()
 
@@ -630,9 +640,6 @@ class PreviewForm(PaymentFrame):
                                   )
         self._init_table(preview_cf)
         self.table.pack(expand=tk.YES, fill=tk.BOTH)
-        # allow "select all" operation only for extended selectmode
-        if self.selectmode == 'extended':
-            self.table.bind('<<select_all>>', self._select_all_rows)
 
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
@@ -644,14 +651,6 @@ class PreviewForm(PaymentFrame):
         bt2 = ttk.Button(bottom_cf, text="Создать из заявки", width=20,
                          command=self._create_from_current)
         bt2.pack(side=tk.LEFT, padx=10, pady=10)
-
-        if user_info.isSuperUser and user_info.AccessType == 2:
-            bt2a = ttk.Button(bottom_cf, text="Выбрать все", width=25,
-                             command=self._select_all_rows)
-            bt2a.pack(side=tk.LEFT, padx=10, pady=10)
-            bt2b = ttk.Button(bottom_cf, text="Утвердить выбранные", width=25,
-                             command=self._approve_multiple)
-            bt2b.pack(side=tk.LEFT, padx=10, pady=10)
 
         bt6 = ttk.Button(bottom_cf, text="Выход", width=10,
                          command=controller._quit)
@@ -849,10 +848,6 @@ class PreviewForm(PaymentFrame):
         self.rows = self.conn.get_paymentslist(self.user_info, **filters)
         self._show_rows(self.rows)
 
-    def _select_all_rows(self, event=None):
-        all_items = tuple(self.table.get_children())
-        self.table.selection_set(all_items)
-
     def _show_detail(self, event=None):
         """ Show details when double-clicked on row. """
         if not event or event.y > 19:
@@ -903,6 +898,13 @@ class PreviewForm(PaymentFrame):
                               values=tuple(map(lambda val: self._format_float(val)
                                if isinstance(val, Decimal) else val, row)),
                               tags=(row[-5],))
+
+    def _toggle_all_rows(self, event=None):
+        if self.all_rows_checked.get():
+            all_items = tuple(self.table.get_children())
+            self.table.selection_set(all_items)
+        else:
+            self.table.selection_set()
 
 
 class DetailedPreview(tk.Frame):
@@ -1123,7 +1125,7 @@ if __name__ == '__main__':
     with DBConnect(server='s-kv-center-s59', db='LogisticFinance') as sql:
         try:
             app = PaymentApp(connection=sql,
-                             user_info=UserInfo(24, 'TestName', 2, 1),
+                             user_info=UserInfo(24, 'TestName', 1, 1),
                              mvz=[('20511RC191', '20511RC191', 'Офис'),
                                   ('40900A2595', '40900A2595', 'Офис')],
                              allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)]

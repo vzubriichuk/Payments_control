@@ -1,4 +1,4 @@
-version_info = (0, 8, 7)
+version_info = (0, 8, 8)
 __title__ = 'Payments control'
 __description__ = 'helps to handle payment queries'
 __url__ = 'https://github.com/VShkaberda/Payments_contol'
