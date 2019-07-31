@@ -171,7 +171,7 @@ class DBConnect(object):
         """
         query = '''
         select pl.ID as ID, pl.UserID as InitiatorID,
-           'Лог-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.ID as varchar(7)) as Num,
+           'ЛГ-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.ID as varchar(7)) as Num,
            pp.ShortUserName, cast(date_created as date) as date_created,
            cast(date_created as smalldatetime) as datetime_created,
            isnull(CSP, '') as CSP, obj.MVZsap, co.FullName, obj.ServiceName,
