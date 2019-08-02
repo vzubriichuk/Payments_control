@@ -56,14 +56,15 @@ class DBConnect(object):
             return True
 
     @monitor_network_state
-    def create_request(self, userID, mvz, office, contragent, csp, plan_date,
-                       sumtotal, nds, text):
+    def create_request(self, userID, mvz, office, categoryID, contragent, csp,
+                       plan_date, sumtotal, nds, text):
         """ Executes procedure that creates new request.
         """
         query = '''
         exec payment.create_request @UserID = ?,
                                     @MVZ = ?,
                                     @Office = ?,
+                                    @CategoryID = ?,
                                     @Contragent = ?,
                                     @date_planed = ?,
                                     @Description = ?,
@@ -72,8 +73,9 @@ class DBConnect(object):
                                     @CSP = ?
             '''
         try:
-            self.__cursor.execute(query, userID, mvz, office, contragent,
-                                  plan_date, text, sumtotal, nds, csp)
+            self.__cursor.execute(query, userID, mvz, office, categoryID,
+                                  contragent, plan_date, text,
+                                  sumtotal, nds, csp)
             request_allowed = self.__cursor.fetchone()[0]
             self.__db.commit()
             return request_allowed
@@ -109,6 +111,20 @@ class DBConnect(object):
         exec payment.get_approvals @paymentID = ?
         '''
         self.__cursor.execute(query, paymentID)
+        return self.__cursor.fetchall()
+
+    @monitor_network_state
+    def get_categories(self, user_info):
+        """ Returns list of available MVZ for current user.
+        """
+        query = '''
+        select CategoryName, ID
+        from payment.ListCategories cat\n
+        '''
+        if not user_info.isSuperUser:
+            query += "where isJustForSuperUser = 0\n"
+        query += "order by DisplayOrder"
+        self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
     @monitor_network_state
@@ -175,12 +191,13 @@ class DBConnect(object):
            pp.ShortUserName, cast(date_created as date) as date_created,
            cast(date_created as smalldatetime) as datetime_created,
            isnull(CSP, '') as CSP, obj.MVZsap, co.FullName, obj.ServiceName,
-           isnull(Contragent, '') as Contragent, date_planed,
+           cat.CategoryName, isnull(Contragent, '') as Contragent, date_planed,
            SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
            p.ValueName as StatusName, p.ValueDescription, pl.Description, appr.UserID,
            case when pl.StatusID = 1 then isnull(pappr.ShortUserName, '') else '' end as approval
         from payment.PaymentsList pl
         join payment.ListObjects obj on pl.ObjectID = obj.ID
+        join payment.ListCategories cat on pl.CategoryID = cat.ID
         join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
         join payment.People pp on pl.UserID = pp.UserID
         join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines

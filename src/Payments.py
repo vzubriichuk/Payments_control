@@ -31,6 +31,7 @@ def main():
             refs = {'connection': sql,
                     'user_info': user_info,
                     'mvz': sql.get_MVZ(user_info),
+                    'categories': sql.get_categories(user_info),
                     'allowed_initiators': sql.get_allowed_initiators(user_info.UserID,
                                                                      user_info.AccessType,
                                                                      user_info.isSuperUser)

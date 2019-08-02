@@ -200,11 +200,13 @@ class PaymentApp(tk.Tk):
 
 
 class PaymentFrame(tk.Frame):
-    def __init__(self, parent, controller, connection, user_info, mvz):
+    def __init__(self, parent, controller, connection, user_info,
+                 mvz, categories):
         super().__init__(parent)
         self.parent = parent
         self.controller = controller
         self.conn = connection
+        self.categories = dict(categories)
         # {mvzSAP: [mvzname, [office1, office2, ...]], ...}
         self.mvz = {}
         if isinstance(self, PreviewForm):
@@ -255,8 +257,9 @@ class PaymentFrame(tk.Frame):
 
 class CreateForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info,
-                 mvz, **kwargs):
-        super().__init__(parent, controller, connection, user_info, mvz)
+                 mvz, categories, **kwargs):
+        super().__init__(parent, controller, connection, user_info,
+                         mvz, categories)
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
 
@@ -280,18 +283,22 @@ class CreateForm(PaymentFrame):
                                       command=self._restraint_by_mvz)
         self.mvz_box.config(width=40)
         self.mvz_sap = tk.Label(row1_cf, padx=6, bg='lightgray', width=11)
-        self.office_label = tk.Label(row1_cf, text='Офис', padx=10)
-        self.office_box = ttk.Combobox(row1_cf, width=20, state='disabled')
+
+        self.category_label = tk.Label(row1_cf, text='Категория', padx=10)
+        self.category_box = ttk.Combobox(row1_cf, width=29, state='readonly')
+        self.category_box['values'] = list(self.categories)
 
         self._row1_pack()
 
         # Second Fill Frame with (contragent, CSP)
         row2_cf = tk.Frame(self, name='row2_cf', padx=15)
 
-        self.contragent_label = tk.Label(row2_cf, text='Контрагент', padx=10)
-        self.contragent_entry = tk.Entry(row2_cf, width=30)
+        self.office_label = tk.Label(row2_cf, text='Офис', padx=10)
+        self.office_box = ttk.Combobox(row2_cf, width=20, state='disabled')
+        self.contragent_label = tk.Label(row2_cf, text='Контрагент')
+        self.contragent_entry = tk.Entry(row2_cf, width=28)
         self.csp = tk.Label(row2_cf, text='CSP', padx=10)
-        self.csp_entry = tk.Entry(row2_cf, width=58)
+        self.csp_entry = tk.Entry(row2_cf, width=26)
 
         self._row2_pack()
 
@@ -380,6 +387,7 @@ class CreateForm(PaymentFrame):
     def _clear(self):
         self.mvz_current.set('')
         self.mvz_sap.config(text='')
+        self.category_box.set('')
         self.office_box.set('')
         self.office_box.configure(state="disabled")
         self.contragent_entry.delete(0, tk.END)
@@ -411,24 +419,36 @@ class CreateForm(PaymentFrame):
                     messagetitle, 'Не указано МВЗ'
             )
             return
+        if not self.office_box.get():
+            messagebox.showerror(
+                    messagetitle, 'Не выбран офис'
+            )
+            return
+        if not self.category_box.get():
+            messagebox.showerror(
+                    messagetitle, 'Не выбрана категория'
+            )
+            return
         if not self._validate_plan_date():
             messagebox.showerror(
                     messagetitle,
                     'Плановая дата не может быть сегодняшней или ранее'
             )
             return
-        if not self.office_box.get():
+        sumtotal = float(self.sumtotal.get_float_form()
+                         if self.sum_entry.get() else 0)
+        if not sumtotal:
             messagebox.showerror(
-                    messagetitle, 'Не выбран офис'
+                    messagetitle, 'Не указана сумма'
             )
             return
         request = {'mvz': self.mvz_sap.cget('text'),
                    'office': self.office_box.get(),
+                   'categoryID': self.categories[self.category_box.get()],
                    'contragent': self.contragent_entry.get() or None,
                    'csp': self.csp_entry.get() or None,
                    'plan_date': self._convert_date(self.plan_date_entry.get()),
-                   'sumtotal': float(self.sumtotal.get_float_form()
-                                     if self.sum_entry.get() else 0),
+                   'sumtotal': sumtotal,
                    'nds':  self.nds.get(),
                    'text': self.desc_text.get("1.0", tk.END)
                    }
@@ -466,14 +486,16 @@ class CreateForm(PaymentFrame):
         self.mvz_label.pack(side=tk.LEFT, pady=5)
         self.mvz_box.pack(side=tk.LEFT, padx=5, pady=5)
         self.mvz_sap.pack(side=tk.LEFT, pady=5)
-        self.office_box.pack(side=tk.RIGHT, padx=5, pady=5)
-        self.office_label.pack(side=tk.RIGHT, pady=5)
+        self.category_box.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.category_label.pack(side=tk.RIGHT, pady=5)
 
     def _row2_pack(self):
-        self.contragent_label.pack(side=tk.LEFT, pady=5)
-        self.contragent_entry.pack(side=tk.LEFT, padx=5, pady=5)
+        self.office_label.pack(side=tk.LEFT, pady=5)
+        self.office_box.pack(side=tk.LEFT, pady=5)
         self.csp_entry.pack(side=tk.RIGHT, padx=5, pady=5)
         self.csp.pack(side=tk.RIGHT, pady=5)
+        self.contragent_entry.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.contragent_label.pack(side=tk.RIGHT, pady=5)
 
     def _row3_pack(self):
         self.plan_date_label.pack(side=tk.LEFT)
@@ -503,8 +525,9 @@ class CreateForm(PaymentFrame):
 
 class PreviewForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info, mvz,
-                 allowed_initiators, **kwargs):
-        super().__init__(parent, controller, connection, user_info, mvz)
+                 allowed_initiators, categories, **kwargs):
+        super().__init__(parent, controller, connection, user_info,
+                         mvz, categories)
         self.office = tuple(sorted(set(x for lst in map(lambda v: v[1],
                                                         self.mvz.values()) for x in lst),
                                    key=lambda s: '' if s == 'Все' else s))
@@ -627,12 +650,12 @@ class PreviewForm(PaymentFrame):
 
         # column name and width
         #self.headings=('a', 'bb', 'cccc')  # for debug
-        self.headings = {'ID': 0, 'InitiatorID':0, '№ заявки': 100,
+        self.headings = {'ID': 0, 'InitiatorID': 0, '№ заявки': 100,
             'Инициатор': 140, 'Дата создания': 90, 'Дата/время создания': 120,
-            'CSP':60, 'МВЗ SAP': 60, 'МВЗ': 150, 'Офис': 100, 'Контрагент': 60,
-            'Плановая дата': 90, 'Сумма без НДС': 85, 'Сумма с НДС': 85,
-            'Статус': 40, 'Статус заявки': 120, 'Описание': 120,
-            'ID Утверждающего': 0, 'Утверждающий': 120}
+            'CSP':60, 'МВЗ SAP': 60, 'МВЗ': 150, 'Офис': 100, 'Категория': 80,
+            'Контрагент': 60, 'Плановая дата': 90, 'Сумма без НДС': 85,
+            'Сумма с НДС': 85, 'Статус': 40, 'Статус заявки': 120,
+            'Описание': 120, 'ID Утверждающего': 0, 'Утверждающий': 120}
 
         self.table = ttk.Treeview(preview_cf, show='headings',
                                   selectmode=self.selectmode,
@@ -771,7 +794,8 @@ class PreviewForm(PaymentFrame):
             self.table["columns"] = tuple(self.headings.keys())
             self.table["displaycolumns"] = tuple(k for k in self.headings.keys()
                 if k not in ('ID', 'НДС', 'Описание', 'Дата/время создания',
-                    'МВЗ', 'Статус заявки', 'InitiatorID', 'ID Утверждающего'))
+                             'МВЗ', 'Категория', 'Статус заявки',
+                             'InitiatorID', 'ID Утверждающего'))
             for head, width in self.headings.items():
                 self.table.heading(head, text=head, anchor=tk.CENTER)
                 self.table.column(head, width=width, anchor=tk.CENTER)
@@ -1128,6 +1152,7 @@ if __name__ == '__main__':
                              user_info=UserInfo(24, 'TestName', 1, 1),
                              mvz=[('20511RC191', '20511RC191', 'Офис'),
                                   ('40900A2595', '40900A2595', 'Офис')],
+                             categories=[('Cat1', 1), ('Cat2', 2)],
                              allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)]
                              )
             app.mainloop()
