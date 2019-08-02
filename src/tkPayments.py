@@ -426,7 +426,7 @@ class CreateForm(PaymentFrame):
                    'office': self.office_box.get(),
                    'contragent': self.contragent_entry.get() or None,
                    'csp': self.csp_entry.get() or None,
-                   'plan_date': self.plan_date_entry.get(),
+                   'plan_date': self._convert_date(self.plan_date_entry.get()),
                    'sumtotal': float(self.sumtotal.get_float_form()
                                      if self.sum_entry.get() else 0),
                    'nds':  self.nds.get(),
