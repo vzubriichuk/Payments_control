@@ -145,13 +145,13 @@ class DBConnect(object):
         if user_info.isSuperUser:
             query = '''
             select obj.MVZsap, co.FullName, obj.ServiceName
-            from payment.ObjectsList obj
+            from payment.ListObjects obj
                 join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap\n
             '''
         else:
             query = '''
             select obj.MVZsap, co.FullName, obj.ServiceName
-            from payment.ObjectsList obj
+            from payment.ListObjects obj
                 join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
                 join payment.User_Approvals_Ref appr on obj.ID = appr.ObjectID
             where appr.UserID = {}\n
@@ -180,7 +180,7 @@ class DBConnect(object):
            p.ValueName as StatusName, p.ValueDescription, pl.Description, appr.UserID,
            case when pl.StatusID = 1 then isnull(pappr.ShortUserName, '') else '' end as approval
         from payment.PaymentsList pl
-        join payment.ObjectsList obj on pl.ObjectID = obj.ID
+        join payment.ListObjects obj on pl.ObjectID = obj.ID
         join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
         join payment.People pp on pl.UserID = pp.UserID
         join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
