@@ -160,15 +160,15 @@ class DBConnect(object):
         """
         if user_info.isSuperUser:
             query = '''
-            select obj.MVZsap, co.FullName, obj.ServiceName
+            select obj.MVZsap, isnull(co.FullName, 'ТехМВЗ') as FullName, obj.ServiceName
             from payment.ListObjects obj
-                join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap\n
+                left join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap\n
             '''
         else:
             query = '''
-            select obj.MVZsap, co.FullName, obj.ServiceName
+            select obj.MVZsap, isnull(co.FullName, 'ТехМВЗ') as FullName, obj.ServiceName
             from payment.ListObjects obj
-                join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
+                left join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
                 join payment.User_Approvals_Ref appr on obj.ID = appr.ObjectID
             where appr.UserID = {}\n
             '''.format(user_info.UserID)
@@ -190,7 +190,8 @@ class DBConnect(object):
            'ЛГ-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.ID as varchar(7)) as Num,
            pp.ShortUserName, cast(date_created as date) as date_created,
            cast(date_created as smalldatetime) as datetime_created,
-           isnull(CSP, '') as CSP, obj.MVZsap, co.FullName, obj.ServiceName,
+           isnull(CSP, '') as CSP, obj.MVZsap,
+           isnull(co.FullName, 'ТехМВЗ') as FullName, obj.ServiceName,
            cat.CategoryName, isnull(Contragent, '') as Contragent, date_planed,
            SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
            p.ValueName as StatusName, p.ValueDescription, pl.Description, appr.UserID,
@@ -198,7 +199,7 @@ class DBConnect(object):
         from payment.PaymentsList pl
         join payment.ListObjects obj on pl.ObjectID = obj.ID
         join payment.ListCategories cat on pl.CategoryID = cat.ID
-        join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
+        left join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
         join payment.People pp on pl.UserID = pp.UserID
         join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
                                     and p.idParams = 2
