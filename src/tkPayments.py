@@ -109,7 +109,7 @@ class PaymentApp(tk.Tk):
                 ]}),
             ])
             style.configure("HeaderStyle.Treeview.Heading",
-                background="#eaeaea", foreground="black", relief='groove', font=('Calibri', 10))
+                background="#eaeaea", foreground="black", relief='groove', font=('Arial', 8))
             style.map("HeaderStyle.Treeview.Heading",
                       relief=[('active', 'sunken'), ('pressed', 'flat')])
 
@@ -119,12 +119,6 @@ class PaymentApp(tk.Tk):
             style.map('ButtonRed.TButton')
             style.configure('ButtonRed.TButton', foreground='red')
 
-            style.map('ButtonMenu.TButton')
-            style.configure('ButtonMenu.TButton',
-                            font=('Calibri', 16),
-                            borderwidth='4')
-
-            style.configure("Big.TLabelframe.Label", font=("Calibri", 14))
             style.configure("TMenubutton", background='white')
         except tk.TclError:
             # if during debug previous tk wasn't destroyed
@@ -265,12 +259,12 @@ class CreateForm(PaymentFrame):
         top = tk.Frame(self, name='top_cf', padx=5)
 
         self.main_label = tk.Label(top, text='Форма создания заявки на согласование',
-                              padx=10, font=('Calibri', 10, 'bold'))
+                              padx=10, font=('Arial', 8, 'bold'))
 
         self.limit_label = tk.Label(top, text='Оставшийся лимит     —',
-                              padx=10, font=('Calibri', 10), fg='#003db9')
-        self.limit_month = tk.Label(top, text='', font=('Calibri', 10))
-        self.limit_sum = tk.Label(top, text='', font=('Calibri', 10, 'bold'))
+                              padx=10, font=('Arial', 8, 'bold'), fg='#003db9')
+        self.limit_month = tk.Label(top, text='', font=('Arial', 9))
+        self.limit_sum = tk.Label(top, text='', font=('Arial', 8, 'bold'))
         self._add_user_label(top)
         self._top_pack()
 
@@ -310,7 +304,7 @@ class CreateForm(PaymentFrame):
         self.plan_date = tk.StringVar()
         self.plan_date.trace("w", self._check_limit)
         self.plan_date_entry = DateEntry(row3_cf, width=12, state='readonly',
-                                         textvariable=self.plan_date, font=('Calibri', 10),
+                                         textvariable=self.plan_date, font=('Arial', 9),
                                          selectmode='day', borderwidth=2)
         self.sum_label = tk.Label(row3_cf, text='Сумма без НДС, грн')
         self.sumtotal = StringSumVar()
@@ -547,7 +541,7 @@ class PreviewForm(PaymentFrame):
         top = tk.Frame(self, name='top_cf', padx=5)
 
         main_label = tk.Label(top, text='Просмотр заявок',
-                              padx=10, font=('Calibri', 10, 'bold'))
+                              padx=10, font=('Arial', 8, 'bold'))
         main_label.pack(side=tk.LEFT, expand=False, anchor=tk.NW)
 
         self._add_user_label(top)
@@ -587,7 +581,7 @@ class PreviewForm(PaymentFrame):
         self.plan_date_label_y = tk.Label(row2_cf, text='год', padx=20)
         self.year = tk.IntVar()
         self.plan_date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2029,
-                                            font=('Calibri', 11), textvariable=self.year)
+                                            font=('Arial', 9), textvariable=self.year)
         self.sum_label_from = tk.Label(row2_cf, text='Сумма без НДС: от')
         self.sumtotal_from = StringSumVar()
         vcmd = (self.register(self._validate_sum))
@@ -968,20 +962,20 @@ class DetailedPreview(tk.Frame):
         self.table_frame = tk.Frame(self.top)
 
         # Add info to table_frame
-        fonts = (('Calibri', 12, 'bold'), ('Calibri', 12))
+        fonts = (('Arial', 9, 'bold'), ('Arial', 10))
         for row in zip(range(len(head)), zip(head, info)):
             if row[1][0] not in ('ID', 'InitiatorID', 'Дата создания',
                                  'ID Утверждающего', 'Утверждающий', 'Статус'):
                 self._newRow(self.table_frame, fonts, *row)
 
         self.appr_label = tk.Label(self.top, text='Утверждающие',
-                                   padx=10, pady=5, font=('Calibri', 12, 'bold'))
+                                   padx=10, pady=5, font=('Arial', 10, 'bold'))
 
         # Top Frame with description and user name
         self.appr_cf = tk.Frame(self, name='appr_cf', padx=5)
 
         # Add approvals to appr_cf
-        fonts = (('Calibri', 12), ('Calibri', 12))
+        fonts = (('Arial', 10), ('Arial', 10))
         approvals = self.conn.get_approvals(self.paymentID)
         for rowNumber, row in enumerate(approvals):
             self._newRow(self.appr_cf, fonts, rowNumber+1, row)
@@ -1091,7 +1085,7 @@ class AlterLimits(tk.Frame):
         # Bottom Frame with buttons
         self.top = tk.Frame(self, name='top_al')
         for j, (header, width) in enumerate(self.headings.items()):
-            lb = tk.Label(self.top, text=header, font=('Calibri', 10, 'bold'),
+            lb = tk.Label(self.top, text=header, font=('Arial', 8, 'bold'),
                           relief='sunken', borderwidth=1, width=width)
             lb.grid(row=0, column=j, ipadx=5, sticky='nswe')
 
