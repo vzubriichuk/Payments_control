@@ -4,6 +4,7 @@ Created on Wed May 15 22:51:04 2019
 
 @author: v.shkaberda
 """
+from checkboxtreeview import CheckboxTreeview
 from calendar import month_name
 from datetime import datetime
 from decimal import Decimal
@@ -533,11 +534,12 @@ class PreviewForm(PaymentFrame):
                                                         self.mvz.values()) for x in lst),
                                    key=lambda s: '' if s == 'Все' else s))
         self.initiatorsID, self.initiators = zip(*allowed_initiators)
-        # Selectmode for treeview
-        self.selectmode = 'extended' if user_info.isSuperUser else 'browse'
+        # EXTENDED_MODE activates extended selectmode for treeview, realized
+        # using checkboxes, and allows to approve multiple requests
+        self.EXTENDED_MODE = (True if user_info.isSuperUser else False)
         # Parameters for sorting
         self.rows = None  # store all rows for sorting and redrawing
-        self.sort_reversed_index = None  # reverse sorting for last sorted column
+        self.sort_reversed_index = None  # reverse sorting for the last sorted column
         self.month = list(month_name)
         self.month_default = self.month[datetime.now().month]
 
@@ -630,7 +632,7 @@ class PreviewForm(PaymentFrame):
         bt3_1.pack(side=tk.RIGHT, padx=10, pady=10)
         row3_cf.pack(side=tk.TOP, fill=tk.X)
 
-        if user_info.isSuperUser and user_info.AccessType == 2:
+        if self.EXTENDED_MODE and user_info.AccessType == 2:
             # Fourth Frame (toggle select all rows, button to approve selected)
             row4_cf = tk.Frame(filterframe, name='row4_cf', padx=15)
             self.all_rows_checked = tk.IntVar()
@@ -652,16 +654,23 @@ class PreviewForm(PaymentFrame):
         # column name and width
         #self.headings=('a', 'bb', 'cccc')  # for debug
         self.headings = {'ID': 0, 'InitiatorID': 0, '№ заявки': 100,
-            'Инициатор': 140, 'Дата создания': 90, 'Дата/время создания': 120,
-            'CSP':60, 'МВЗ SAP': 60, 'МВЗ': 150, 'Офис': 100, 'Категория': 80,
+            'Инициатор': 130, 'Дата создания': 80, 'Дата/время создания': 120,
+            'CSP':60, 'МВЗ SAP': 60, 'МВЗ': 150, 'Офис': 80, 'Категория': 80,
             'Контрагент': 60, 'Плановая дата': 90, 'Сумма без НДС': 85,
-            'Сумма с НДС': 85, 'Статус': 40, 'Статус заявки': 120,
+            'Сумма с НДС': 85, 'Статус': 45, 'Статус заявки': 120,
             'Описание': 120, 'ID Утверждающего': 0, 'Утверждающий': 120}
 
-        self.table = ttk.Treeview(preview_cf, show='headings',
-                                  selectmode=self.selectmode,
-                                  style='HeaderStyle.Treeview'
-                                  )
+        if self.EXTENDED_MODE:
+            self.table = CheckboxTreeview(preview_cf,
+                                          selectmode='browse',
+                                          style='HeaderStyle.Treeview'
+                                          )
+        else:
+            self.table = ttk.Treeview(preview_cf, show='headings',
+                                      selectmode='browse',
+                                      style='HeaderStyle.Treeview'
+                                      )
+
         self._init_table(preview_cf)
         self.table.pack(expand=tk.YES, fill=tk.BOTH)
 
@@ -711,7 +720,8 @@ class PreviewForm(PaymentFrame):
     def  _approve_multiple(self):
         """ Allows to approve multiple requests chosen in PreviewForm.
         """
-        curItems = self.table.selection()
+        curItems = (item for item in self.table.get_children()
+                    if self.table.tag_has('checked', item))
         if not curItems:
             return
         # store paymentID and SumNoTax
@@ -731,7 +741,7 @@ class PreviewForm(PaymentFrame):
                                        )
         if not confirmed:
             return
-        for paymentID in to_approve.keys():
+        for paymentID in to_approve:
             self.conn.update_confirmed(self.userID, paymentID, is_approved=True)
         self._refresh()
 
@@ -816,7 +826,7 @@ class PreviewForm(PaymentFrame):
         #self.table.tag_configure('oddrow', background='lightgray')
 
         self.table.bind('<Double-1>', self._show_detail)
-        self.table.bind('<Button-1>', self._sort)
+        self.table.bind('<Button-1>', self._sort, True)
 
         scrolltable = tk.Scrollbar(parent, command=self.table.yview)
         self.table.configure(yscrollcommand=scrolltable.set)
@@ -824,6 +834,7 @@ class PreviewForm(PaymentFrame):
 
     def _resize_columns(self):
         """ Resize columns in treeview. """
+        self.table.column('#0', width=36)
         for head, width in self.headings.items():
             self.table.column(head, width=width)
 
@@ -872,10 +883,16 @@ class PreviewForm(PaymentFrame):
             return
         self.rows = self.conn.get_paymentslist(self.user_info, **filters)
         self._show_rows(self.rows)
+        # Deselect "check_all_rows" checkbutton
+        self.all_rows_checked.set(0)
 
     def _show_detail(self, event=None):
         """ Show details when double-clicked on row. """
-        if not event or event.y > 19:
+        show_detail = (not event or (self.table.identify_row(event.y) and
+                                     int(self.table.identify_column(event.x)[1:]) > 0
+                                     )
+                      )
+        if show_detail:
             curRow = self.table.focus()
             if curRow:
                 newlevel = tk.Toplevel(self.parent)
@@ -918,18 +935,19 @@ class PreviewForm(PaymentFrame):
         """ Refresh table with new rows. """
         self.table.delete(*self.table.get_children())
         for row in rows:
-            # tag = (Status,)
+            # tag = (Status, 'unchecked')
             self.table.insert('', tk.END,
                               values=tuple(map(lambda val: self._format_float(val)
                                if isinstance(val, Decimal) else val, row)),
-                              tags=(row[-5],))
+                              tags=(row[-5], 'unchecked'))
 
     def _toggle_all_rows(self, event=None):
         if self.all_rows_checked.get():
-            all_items = tuple(self.table.get_children())
-            self.table.selection_set(all_items)
+            for item in self.table.get_children():
+                self.table.check_item(item)
         else:
-            self.table.selection_set()
+            for item in self.table.get_children():
+                self.table.uncheck_item(item)
 
 
 class DetailedPreview(tk.Frame):
