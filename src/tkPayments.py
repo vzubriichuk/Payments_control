@@ -878,7 +878,8 @@ class PreviewForm(PaymentFrame):
         self.rows = self.conn.get_paymentslist(self.user_info, **filters)
         self._show_rows(self.rows)
         # Deselect "check_all_rows" checkbutton
-        self.all_rows_checked.set(0)
+        if self.EXTENDED_MODE and self.user_info.AccessType == 2:
+            self.all_rows_checked.set(0)
 
     def _show_detail(self, event=None):
         """ Show details when double-clicked on row. """
