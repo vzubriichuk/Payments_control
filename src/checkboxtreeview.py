@@ -18,8 +18,8 @@ class CheckboxTreeview(ttk.Treeview):
         # checkboxes are implemented with images. Image source:
         # https://commons.wikimedia.org/wiki/File:Checkbox_States.svg?uselang=en
         # License CC BY-SA 3.0  (https://creativecommons.org/licenses/by-sa/3.0)
-        self.im_checked = tk.PhotoImage(file='../resources/checked.png')
-        self.im_unchecked = tk.PhotoImage(file='../resources/unchecked.png')
+        self.im_checked = tk.PhotoImage(file='resources/checked.png')
+        self.im_unchecked = tk.PhotoImage(file='resources/unchecked.png')
         self.tag_configure('unchecked', image=self.im_unchecked)
         self.tag_configure('checked', image=self.im_checked)
         # check / uncheck boxes on click

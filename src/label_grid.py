@@ -21,8 +21,8 @@ class LabelGrid(tk.Frame):
         self.content = content
         self.grid_width = list(headers.values()) if headers else grid_width
         self.content_size = (len(content), len(content[0]))
-        self.im_unchecked = tk.PhotoImage(file='../resources/unchecked.png')
-        self.im_checked = tk.PhotoImage(file='../resources/checked.png')
+        self.im_unchecked = tk.PhotoImage(file='resources/unchecked.png')
+        self.im_checked = tk.PhotoImage(file='resources/checked.png')
         assert len(self.grid_width) == self.content_size[1], ('Number of columns'
                   ' should be the same for headers, content and grid_width')
         if self.headers:

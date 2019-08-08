@@ -76,7 +76,7 @@ class PaymentApp(tk.Tk):
     def __init__(self, **kwargs):
         super().__init__()
         self.title('Заявки на оплату')
-        self.iconbitmap('../resources/payment.ico')
+        self.iconbitmap('resources/payment.ico')
         # store the state of PreviewForm
         self.state_PreviewForm = 'normal'
         # geometry_storage {Framename:(width, height)}
@@ -894,7 +894,7 @@ class PreviewForm(PaymentFrame):
                 newlevel.withdraw()
                 newlevel.transient(self)  # disable minimize/maximize buttons
                 newlevel.title('Заявка детально')
-                newlevel.iconbitmap('../resources/preview.ico')
+                newlevel.iconbitmap('resources/preview.ico')
                 approvalID = self.table.item(curRow).get('values')[-2]
                 is_valid_approval = self._is_valid_approval(approvalID)
                 if is_valid_approval:
