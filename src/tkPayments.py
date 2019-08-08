@@ -530,7 +530,8 @@ class PreviewForm(PaymentFrame):
         self.initiatorsID, self.initiators = zip(*allowed_initiators)
         # EXTENDED_MODE activates extended selectmode for treeview, realized
         # using checkboxes, and allows to approve multiple requests
-        self.EXTENDED_MODE = (True if user_info.isSuperUser else False)
+        self.EXTENDED_MODE = (True if user_info.isSuperUser
+                              and user_info.AccessType == 2 else False)
         # Parameters for sorting
         self.rows = None  # store all rows for sorting and redrawing
         self.sort_reversed_index = None  # reverse sorting for the last sorted column
@@ -626,7 +627,7 @@ class PreviewForm(PaymentFrame):
         bt3_1.pack(side=tk.RIGHT, padx=10, pady=10)
         row3_cf.pack(side=tk.TOP, fill=tk.X)
 
-        if self.EXTENDED_MODE and user_info.AccessType == 2:
+        if self.EXTENDED_MODE:
             # Fourth Frame (toggle select all rows, button to approve selected)
             row4_cf = tk.Frame(filterframe, name='row4_cf', padx=15)
             self.all_rows_checked = tk.IntVar()
@@ -878,7 +879,7 @@ class PreviewForm(PaymentFrame):
         self.rows = self.conn.get_paymentslist(self.user_info, **filters)
         self._show_rows(self.rows)
         # Deselect "check_all_rows" checkbutton
-        if self.EXTENDED_MODE and self.user_info.AccessType == 2:
+        if self.EXTENDED_MODE:
             self.all_rows_checked.set(0)
 
     def _show_detail(self, event=None):
