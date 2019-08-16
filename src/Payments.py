@@ -42,7 +42,7 @@ def main():
 
     except SQLError as e:
         # login failed
-        if e.args[0] == '42000':
+        if e.args[0] in ('28000', '42000'):
             writelog(e)
             tkp.LoginError()
         else:

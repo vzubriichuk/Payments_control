@@ -671,14 +671,16 @@ class PreviewForm(PaymentFrame):
 
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
+        # Show create buttons only for users with rights
+        # to create (1) or approve + create (2)
+        if self.user_info.AccessType in (1, 2):
+            bt1 = ttk.Button(bottom_cf, text="Создать", width=10,
+                             command=lambda: controller._show_frame('CreateForm'))
+            bt1.pack(side=tk.LEFT, padx=10, pady=10)
 
-        bt1 = ttk.Button(bottom_cf, text="Создать", width=10,
-                         command=lambda: controller._show_frame('CreateForm'))
-        bt1.pack(side=tk.LEFT, padx=10, pady=10)
-
-        bt2 = ttk.Button(bottom_cf, text="Создать из заявки", width=20,
-                         command=self._create_from_current)
-        bt2.pack(side=tk.LEFT, padx=10, pady=10)
+            bt2 = ttk.Button(bottom_cf, text="Создать из заявки", width=20,
+                             command=self._create_from_current)
+            bt2.pack(side=tk.LEFT, padx=10, pady=10)
 
         bt6 = ttk.Button(bottom_cf, text="Выход", width=10,
                          command=controller._quit)
