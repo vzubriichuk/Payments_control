@@ -4,6 +4,7 @@ Created on Wed May 15 22:51:04 2019
 
 @author: v.shkaberda
 """
+from _version import __version__
 from checkboxtreeview import CheckboxTreeview
 from calendar import month_name
 from datetime import datetime
@@ -215,9 +216,18 @@ class PaymentFrame(tk.Frame):
         # Often used info
         self.userID = user_info.UserID
 
+    def _add_copyright(self, parent):
+        """ Adds user name in top right corner. """
+        copyright_label = tk.Label(parent, text="О программе",
+                                   font=('Arial', 8, 'underline'),
+                                   cursor="hand2")
+        copyright_label.pack(side=tk.RIGHT, anchor=tk.N)
+
     def _add_user_label(self, parent):
         """ Adds user name in top right corner. """
-        user_label = tk.Label(parent, text=self.user_info.ShortUserName, padx=10)
+        user_label = tk.Label(parent, text='Пользователь: ' +
+                     self.user_info.ShortUserName + '  Версия ' + __version__,
+                     font=('Arial', 8))
         user_label.pack(side=tk.RIGHT, anchor=tk.NE)
 
     def _format_float(self, sum_float):
@@ -265,6 +275,7 @@ class CreateForm(PaymentFrame):
                               padx=10, font=('Arial', 8, 'bold'), fg='#003db9')
         self.limit_month = tk.Label(top, text='', font=('Arial', 9))
         self.limit_sum = tk.Label(top, text='', font=('Arial', 8, 'bold'))
+
         self._add_user_label(top)
         self._top_pack()
 
@@ -545,6 +556,7 @@ class PreviewForm(PaymentFrame):
                               padx=10, font=('Arial', 8, 'bold'))
         main_label.pack(side=tk.LEFT, expand=False, anchor=tk.NW)
 
+        self._add_copyright(top)
         self._add_user_label(top)
 
         top.pack(side=tk.TOP, fill=tk.X, expand=False)
