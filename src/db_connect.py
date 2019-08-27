@@ -49,7 +49,7 @@ class DBConnect(object):
         """ Check user permission.
             If access prmitted returns True, otherwise None.
         """
-        self.__cursor.execute('exec [payment].[Access_Check]')
+        self.__cursor.execute("exec [payment].[Access_Check]")
         access = self.__cursor.fetchone()
         # check AccessType and isSuperUser
         if access and (access[0] in (1, 2) or access[1]):
@@ -107,9 +107,7 @@ class DBConnect(object):
     def get_approvals(self, paymentID):
         """ Returns all approvals of the request with id = paymentID.
         """
-        query = '''
-        exec payment.get_approvals @paymentID = ?
-        '''
+        query = "exec payment.get_approvals @paymentID = ?"
         self.__cursor.execute(query, paymentID)
         return self.__cursor.fetchall()
 
@@ -117,14 +115,8 @@ class DBConnect(object):
     def get_categories(self, user_info):
         """ Returns list of available MVZ for current user.
         """
-        query = '''
-        select CategoryName, ID
-        from payment.ListCategories cat\n
-        '''
-        if not user_info.isSuperUser:
-            query += "where isJustForSuperUser = 0\n"
-        query += "order by DisplayOrder"
-        self.__cursor.execute(query)
+        query = "exec payment.get_categories @isSuperUser = ?"
+        self.__cursor.execute(query, user_info.isSuperUser)
         return self.__cursor.fetchall()
 
     @monitor_network_state
@@ -158,25 +150,13 @@ class DBConnect(object):
     def get_MVZ(self, user_info):
         """ Returns list of available MVZ for current user.
         """
-        if user_info.isSuperUser:
-            query = '''
-            select obj.MVZsap, isnull(co.FullName, 'ТехМВЗ') as FullName, obj.ServiceName
-            from payment.ListObjects obj
-                left join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap\n
-            '''
-        else:
-            query = '''
-            select obj.MVZsap, isnull(co.FullName, 'ТехМВЗ') as FullName, obj.ServiceName
-            from payment.ListObjects obj
-                left join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
-                join payment.User_Approvals_Ref appr on obj.ID = appr.ObjectID
-            where appr.UserID = {}\n
-            '''.format(user_info.UserID)
-            if user_info.AccessType == 1:
-                query += ("and cast(getdate() as date) between appr.activeFrom"
-                          " and isnull(appr.activeTo, '20990101')\n")
-        query += "order by co.FullName"
-        self.__cursor.execute(query)
+        query = '''
+        exec payment.get_MVZ @UserID = ?,
+                             @AccessType = ?,
+                             @isSuperUser = ?
+        '''
+        self.__cursor.execute(query, user_info.UserID, user_info.AccessType,
+                              user_info.isSuperUser)
         return self.__cursor.fetchall()
 
     @monitor_network_state
@@ -259,11 +239,7 @@ class DBConnect(object):
     def update_discarded(self, discardID):
         """ Set status of request to "discarded".
         """
-        query = '''
-        UPDATE payment.PaymentsList
-        SET StatusID = 2
-        where ID = ?
-        '''
+        query = "exec payment.discard_request @paymentID = ?"
         self.__cursor.execute(query, discardID)
         self.__db.commit()
 
