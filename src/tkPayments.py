@@ -13,9 +13,11 @@ from label_grid import LabelGrid
 from multiselect import MultiselectMenu
 from tkcalendar import DateEntry
 from tkinter import ttk, messagebox
+from tkHyperlinkManager import HyperlinkManager
 from math import ceil
 from xl import export_to_excel
 import locale
+import os
 import tkinter as tk
 
 # example of subsription and default recipient
@@ -215,13 +217,6 @@ class PaymentFrame(tk.Frame):
         self.user_info = user_info
         # Often used info
         self.userID = user_info.UserID
-
-    def _add_copyright(self, parent):
-        """ Adds user name in top right corner. """
-        copyright_label = tk.Label(parent, text="О программе",
-                                   font=('Arial', 8, 'underline'),
-                                   cursor="hand2")
-        copyright_label.pack(side=tk.RIGHT, anchor=tk.N)
 
     def _add_user_label(self, parent):
         """ Adds user name in top right corner. """
@@ -715,16 +710,19 @@ class PreviewForm(PaymentFrame):
         bottom_cf.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
         preview_cf.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=5)
 
+    def _add_copyright(self, parent):
+        """ Adds user name in the top right corner. """
+        copyright_label = tk.Label(parent, text="О программе",
+                                   font=('Arial', 8, 'underline'),
+                                   cursor="hand2")
+        copyright_label.bind("<Button-1>", self._show_about)
+        copyright_label.pack(side=tk.RIGHT, anchor=tk.N)
+
     def _alter_limits(self):
         """ Create and raise new frame with limits. """
-        newlevel = tk.Toplevel(self.parent)
-        newlevel.transient(self)  # disable minimize/maximize buttons
-        newlevel.title('Изменение лимитов')
-        AlterLimits(newlevel, self.conn)
-        newlevel.resizable(width=False, height=False)
-        self._center_popup_window(newlevel, 400, 300)
-        newlevel.focus()
-        newlevel.grab_set()
+        self._raise_Toplevel(frame=AlterLimits, title='Изменение лимитов',
+                             width=400, height=300, static_geometry=False,
+                             options=(self.conn,))
 
     def  _approve_multiple(self):
         """ Allows to approve multiple requests chosen in PreviewForm.
@@ -754,14 +752,17 @@ class PreviewForm(PaymentFrame):
             self.conn.update_confirmed(self.userID, paymentID, is_approved=True)
         self._refresh()
 
-    def _center_popup_window(self, newlevel, w, h):
+    def _center_popup_window(self, newlevel, w, h, static_geometry=True):
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
 
         start_x = int((screen_width/2) - (w/2))
         start_y = int((screen_height/2) - (h/2))
 
-        newlevel.geometry('+{}+{}'.format(start_x, start_y))
+        if static_geometry == True:
+            newlevel.geometry('{}x{}+{}+{}'.format(w, h, start_x, start_y))
+        else:
+            newlevel.geometry('+{}+{}'.format(start_x, start_y))
 
     def _clear_filters(self):
         self.initiator_box.set('Все')
@@ -841,6 +842,27 @@ class PreviewForm(PaymentFrame):
         self.table.configure(yscrollcommand=scrolltable.set)
         scrolltable.pack(side=tk.RIGHT, fill=tk.Y)
 
+    def _raise_Toplevel(self, frame, title, width, height,
+                        static_geometry=True, options=()):
+        """ Create and raise new frame with limits.
+        Input:
+        frame - class, Frame class to be drew in Toplevel;
+        title - str, window title;
+        width - int, width parameter to center window;
+        height - int, height parameter to center window;
+        static_geometry - bool, if True - width and height will determine size
+            of window, otherwise size will be determined  dynamically;
+        options - tuple, arguments that will be sent to frame.
+        """
+        newlevel = tk.Toplevel(self.parent)
+        newlevel.transient(self)  # disable minimize/maximize buttons
+        newlevel.title(title)
+        frame(newlevel, *options)
+        newlevel.resizable(width=False, height=False)
+        self._center_popup_window(newlevel, width, height, static_geometry)
+        newlevel.focus()
+        newlevel.grab_set()
+
     def _resize_columns(self):
         """ Resize columns in treeview. """
         self.table.column('#0', width=36)
@@ -896,6 +918,13 @@ class PreviewForm(PaymentFrame):
         if self.EXTENDED_MODE:
             self.all_rows_checked.set(0)
 
+    def _show_about(self, event=None):
+        """ Raise frame with info about app. """
+        self._raise_Toplevel(frame=AboutFrame,
+                             title='Заявки на оплату v. ' + __version__,
+                             width=400, height=150)
+
+
     def _show_detail(self, event=None):
         """ Show details when double-clicked on row. """
         show_detail = (not event or (self.table.identify_row(event.y) and
@@ -921,7 +950,8 @@ class PreviewForm(PaymentFrame):
                                     self.headings,
                                     self.table.item(curRow).get('values'))
                 newlevel.resizable(width=False, height=False)
-                self._center_popup_window(newlevel, 500, 400)
+                self._center_popup_window(newlevel, 500, 400,
+                                          static_geometry=False)
                 newlevel.deiconify()
                 newlevel.focus()
                 newlevel.grab_set()
@@ -1086,6 +1116,51 @@ class ApproveConfirmation(DetailedPreview):
             self.parentform._refresh()
             self.parent.destroy()
 
+class AboutFrame(tk.Frame):
+    """ Creates a frame with copyright and info about app. """
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.top = ttk.LabelFrame(self, name='top_af')
+
+        logo = tk.PhotoImage(file='resources/payment.png')
+        self.logo_label = tk.Label(self.top, image=logo)
+        self.logo_label.image = logo  # keep a reference to avoid gc!
+
+        self.copyright_text = tk.Text(self.top, bg='#f1f1f1',
+                                      font=('Arial', 8), relief=tk.FLAT)
+        hyperlink = HyperlinkManager(self.copyright_text)
+
+        def link_instruction():
+            path = 'resources\\README.pdf'
+            os.startfile(path)
+
+        self.copyright_text.insert(tk.INSERT,
+                                  'Заявки на оплату v. ' + __version__ +'\n\n')
+        self.copyright_text.insert(tk.INSERT, "Инструкция по использованию",
+                                   hyperlink.add(link_instruction))
+        self.copyright_text.insert(tk.INSERT, "\n\n")
+
+        def link_license():
+            path = 'resources\\LICENSE.txt'
+            os.startfile(path)
+
+        self.copyright_text.insert(tk.INSERT,
+                            'Copyright © 2019 Офис контроллинга логистики\n')
+        self.copyright_text.insert(tk.INSERT, 'MIT License',
+                                   hyperlink.add(link_license))
+
+        self.bt = ttk.Button(self, text="Закрыть", width=10,
+                        command=parent.destroy)
+        self.pack_all()
+
+    def pack_all(self):
+        self.bt.pack(side=tk.BOTTOM, pady=5)
+        self.top.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10)
+        self.logo_label.pack(side=tk.LEFT, padx=10)
+        self.copyright_text.pack(side=tk.LEFT, padx=10)
+        self.pack(fill=tk.BOTH, expand=True)
+
 
 class AlterLimits(tk.Frame):
     """ Creates a frame to manage user limits. """
@@ -1098,7 +1173,7 @@ class AlterLimits(tk.Frame):
         self.headings = {'UserID': 6, 'Инициатор': 41,
                          'Лимит': 9, 'Обнулять': 8}
 
-        # Bottom Frame with buttons
+        # Top Frame with table
         self.top = tk.Frame(self, name='top_al')
         for j, (header, width) in enumerate(self.headings.items()):
             lb = tk.Label(self.top, text=header, font=('Arial', 8, 'bold'),
