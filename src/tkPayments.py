@@ -375,7 +375,8 @@ class CreateForm(PaymentFrame):
         """ Shows mvz_sap that corresponds to chosen MVZ and restraint offices.
             If 1 office is available, choose it, otherwise make box active.
         """
-        self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0])
+        # tcl language has no notion of None or a null value, so use '' instead
+        self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0] or '')
         offices = self.mvz[self.mvz_current.get()][1]
         if len(offices) == 1:
             self.office_box.set(offices[0])
@@ -443,7 +444,7 @@ class CreateForm(PaymentFrame):
                     messagetitle, 'Не указана сумма'
             )
             return
-        request = {'mvz': self.mvz_sap.cget('text'),
+        request = {'mvz': self.mvz_sap.cget('text') or None,
                    'office': self.office_box.get(),
                    'categoryID': self.categories[self.category_box.get()],
                    'contragent': self.contragent_entry.get() or None,
@@ -478,7 +479,7 @@ class CreateForm(PaymentFrame):
         fill some fields taken from choosed in PreviewForm request.
         """
         self.mvz_current.set(mvz)
-        self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0])
+        self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0] or '')
         self.office_box.set(office)
         self.category_box.set(category)
         self.contragent_entry.delete(0, tk.END)
