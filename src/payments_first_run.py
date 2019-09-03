@@ -5,16 +5,12 @@ Created on Tue Aug 20 14:54:51 2019
 @author: v.shkaberda
 """
 from _version import upd_path
-from contextlib import suppress
 from tkinter import Tk, messagebox
 from win32com.client import Dispatch
 import getpass, os, zipfile, zlib
 
 SOURCE = zlib.decompress(upd_path).decode()
 TARGET = os.path.join('C:\\Users', getpass.getuser(), 'AppData\\Local')
-REFERENCES = os.path.join('C:\\Users',
-                          getpass.getuser(),
-                          'AppData\\Roaming\\Microsoft\\Windows\\Payments')
 DESKTOP = os.path.join('C:\\Users', getpass.getuser(), 'Desktop')
 WDIR = os.path.join(TARGET, 'Payments')
 TARGETFILE = os.path.join(WDIR, 'payments_checker.exe')
@@ -48,14 +44,10 @@ def main():
     # extract actual version of app
     with zipfile.ZipFile(os.path.join(SOURCE, 'Payments.zip'), 'r') as zip_ref:
         zip_ref.extractall(TARGET)
-    # create shortcuts in windows start menu and on desktop
-    with suppress(FileExistsError):
-        os.mkdir(REFERENCES)
-    for path in (REFERENCES, DESKTOP):
-        create_shortcut(os.path.join(path, 'Заявки на оплату.lnk'),
-                        TARGETFILE,
-                        WDIR,
-                        ICONFILE)
+    create_shortcut(os.path.join(DESKTOP, 'Заявки на оплату.lnk'),
+                    TARGETFILE,
+                    WDIR,
+                    ICONFILE)
     SuccessMsg()
 
 if __name__ == '__main__':
