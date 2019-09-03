@@ -945,11 +945,13 @@ class PreviewForm(PaymentFrame):
                 if is_valid_approval:
                     ApproveConfirmation(newlevel, self, self.conn, self.userID,
                                         self.headings,
-                                        self.table.item(curRow).get('values'))
+                                        self.table.item(curRow).get('values'),
+                                        self.table.item(curRow).get('tags'))
                 else:
                     DetailedPreview(newlevel, self, self.conn, self.userID,
                                     self.headings,
-                                    self.table.item(curRow).get('values'))
+                                    self.table.item(curRow).get('values'),
+                                    self.table.item(curRow).get('tags'))
                 newlevel.resizable(width=False, height=False)
                 self._center_popup_window(newlevel, 500, 400,
                                           static_geometry=False)
@@ -993,7 +995,7 @@ class PreviewForm(PaymentFrame):
 
 class DetailedPreview(tk.Frame):
     """ Class that creates Frame with information about chosen request. """
-    def __init__(self, parent, parentform, conn, userID, head, info):
+    def __init__(self, parent, parentform, conn, userID, head, info, tags):
         super().__init__(parent)
         self.parent = parent
         self.parentform = parentform
@@ -1001,6 +1003,7 @@ class DetailedPreview(tk.Frame):
         self.approveclass_bool = isinstance(self, ApproveConfirmation)
         self.paymentID, self.initiatorID = info[:2]
         self.userID = userID
+        self.rowtags = tags
 
         # Top Frame with description and user name
         self.top = tk.Frame(self, name='top_cf', padx=5, pady=5)
@@ -1049,7 +1052,7 @@ class DetailedPreview(tk.Frame):
                          command=self.parent.destroy)
         bt4.pack(side=tk.RIGHT, padx=15, pady=5)
 
-        if self.userID == self.initiatorID:
+        if self.userID == self.initiatorID and 'Отм.' not in self.rowtags:
             bt3 = ttk.Button(self.bottom, text="Отменить", width=10,
                              command=self._discard)
             bt3.pack(side=tk.RIGHT, padx=15, pady=5)
@@ -1106,8 +1109,8 @@ class DetailedPreview(tk.Frame):
 class ApproveConfirmation(DetailedPreview):
     """ Class with information about reuqest that contains buttons
         to approval/decline it. """
-    def __init__(self, parent, parentform, conn, userID, head, info):
-        super().__init__(parent, parentform, conn, userID, head, info)
+    def __init__(self, parent, parentform, conn, userID, head, info, tags):
+        super().__init__(parent, parentform, conn, userID, head, info, tags)
 
     def _close(self, is_approved):
         confirmed = messagebox.askyesno(title='Подтвердите действие',
@@ -1116,6 +1119,7 @@ class ApproveConfirmation(DetailedPreview):
             self.conn.update_confirmed(self.userID, self.paymentID, is_approved)
             self.parentform._refresh()
             self.parent.destroy()
+
 
 class AboutFrame(tk.Frame):
     """ Creates a frame with copyright and info about app. """
