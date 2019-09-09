@@ -170,7 +170,7 @@ class DBConnect(object):
            'ЛГ-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.ID as varchar(7)) as Num,
            pp.ShortUserName, cast(date_created as date) as date_created,
            cast(date_created as smalldatetime) as datetime_created,
-           isnull(CSP, '') as CSP, obj.MVZsap,
+           isnull(CSP, '') as CSP, isnull(obj.MVZsap, '') as MVZsap,
            isnull(co.FullName, 'ТехМВЗ') as FullName, obj.ServiceName,
            cat.CategoryName, isnull(Contragent, '') as Contragent, date_planed,
            SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
