@@ -18,6 +18,7 @@ SOURCE = zlib.decompress(upd_path).decode()
 ALREADY_UPDATED = []
 
 def update_files(main_path, path, directories, files):
+    # specify path in current working directory
     relative_path = path.replace(main_path, '.')
     for file in files:
         if (relative_path, file) not in ALREADY_UPDATED:
