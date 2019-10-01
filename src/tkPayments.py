@@ -831,7 +831,7 @@ class PreviewForm(PaymentFrame):
 
         #self._show_rows(rows=((123, 456, 789), ('abc', 'def', 'ghk')))  # for debug
 
-        for tag, bg in zip(('Отм.', 'Утв.', 'Откл.', 'На согл.'),
+        for tag, bg in zip(('Отозв.', 'Утв.', 'Откл.', 'На согл.'),
                            ('lightgray', 'lightgreen', '#f66e6e', '#ffffc8')):
             self.table.tag_configure(tag, background=bg)
         #self.table.tag_configure('oddrow', background='lightgray')
@@ -1052,18 +1052,18 @@ class DetailedPreview(tk.Frame):
                          command=self.parent.destroy)
         bt4.pack(side=tk.RIGHT, padx=15, pady=5)
 
-        if self.userID == self.initiatorID and 'Отм.' not in self.rowtags:
-            bt3 = ttk.Button(self.bottom, text="Отменить", width=10,
+        if self.userID == self.initiatorID and 'Отозв.' not in self.rowtags:
+            bt3 = ttk.Button(self.bottom, text="Отозвать", width=10,
                              command=self._discard)
             bt3.pack(side=tk.RIGHT, padx=15, pady=5)
 
     def _discard(self):
-        mboxname = 'Отмена заявки'
+        mboxname = 'Отзыв заявки'
         confirmed = messagebox.askyesno(title=mboxname,
-                  message='Вы уверены, что хотите отменить заявку?')
+                  message='Вы уверены, что хотите отозвать заявку?')
         if confirmed:
             self.conn.update_discarded(self.paymentID)
-            messagebox.showinfo(mboxname, 'Заявка отменена')
+            messagebox.showinfo(mboxname, 'Заявка отозвана')
             self.parentform._refresh()
             self.parent.destroy()
 
