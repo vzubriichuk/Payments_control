@@ -57,7 +57,7 @@ class DBConnect(object):
 
     @monitor_network_state
     def create_request(self, userID, mvz, office, categoryID, contragent, csp,
-                       plan_date, sumtotal, nds, text):
+                       plan_date, sumtotal, nds, text, approval):
         """ Executes procedure that creates new request.
         """
         query = '''
@@ -70,12 +70,13 @@ class DBConnect(object):
                                     @Description = ?,
                                     @SumNoTax = ?,
                                     @Tax = ?,
-                                    @CSP = ?
+                                    @CSP = ?,
+                                    @Approval = ?
             '''
         try:
             self.__cursor.execute(query, userID, mvz, office, categoryID,
                                   contragent, plan_date, text,
-                                  sumtotal, nds, csp)
+                                  sumtotal, nds, csp, approval)
             request_allowed = self.__cursor.fetchone()[0]
             self.__db.commit()
             return request_allowed
@@ -109,6 +110,14 @@ class DBConnect(object):
         """
         query = "exec payment.get_approvals @paymentID = ?"
         self.__cursor.execute(query, paymentID)
+        return self.__cursor.fetchall()
+
+    @monitor_network_state
+    def get_approvals_for_first_stage(self):
+        """ Returns all approvals for first stage who can be chosen.
+        """
+        query = "exec payment.get_approvals_for_first_stage"
+        self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
     @monitor_network_state
@@ -179,9 +188,9 @@ class DBConnect(object):
         from payment.PaymentsList pl
         join payment.ListObjects obj on pl.ObjectID = obj.ID
         join payment.ListCategories cat on pl.CategoryID = cat.ID
-        left join BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
+        left join LogisticFinance.BTool.aid_CostObject_Detail co on co.SAPMVZ = obj.MVZsap
         join payment.People pp on pl.UserID = pp.UserID
-        join dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
+        join LogisticFinance.dbo.GlobalParamsLines p on pl.StatusID = p.idParamsLines
                                     and p.idParams = 2
                                     and p.Enabled = 1
         -- approvals
@@ -212,7 +221,11 @@ class DBConnect(object):
                 query += "and SumNoTax <= {}\n".format(sumtotal_to)
             if not nds == -1:
                 query += "and Tax = {}\n".format(nds)
-        query += "order by ID DESC" # the same as created(datetime) DESC
+        # specific sorting for several people
+        if user_info.UserID in (42, 81, 75):
+            query += "order by IIF(pl.StatusID in (2, 4), 2, 1) ASC, ID DESC"
+        else:
+            query += "order by ID DESC" # the same as created(datetime) DESC
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 

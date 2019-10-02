@@ -257,9 +257,10 @@ class PaymentFrame(tk.Frame):
 
 class CreateForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info,
-                 mvz, categories, **kwargs):
+                 mvz, categories, approvals_for_first_stage, **kwargs):
         super().__init__(parent, controller, connection, user_info,
                          mvz, categories)
+        self.approvals_for_first_stage = dict(approvals_for_first_stage)
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
 
@@ -337,6 +338,14 @@ class CreateForm(PaymentFrame):
         self.desc_text = tk.Text(text_cf)    # input and output box
         self.desc_text.pack(in_=text_cf, expand=True, pady=15)
 
+        # Approval choose Frame
+        appr_cf = tk.Frame(self, name='appr_cf', padx=15)
+        self.approval_label = tk.Label(appr_cf, text='Первый этап утверждения:', padx=10)
+        self.approval_box = ttk.Combobox(appr_cf, width=40, state='readonly')
+        self.approval_box['values'] = list(self.approvals_for_first_stage)
+
+        self._row4_pack()
+
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
 
@@ -355,6 +364,7 @@ class CreateForm(PaymentFrame):
         # Pack frames
         top.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         bottom_cf.pack(side=tk.BOTTOM, fill=tk.X)
+        appr_cf.pack(side=tk.BOTTOM, fill=tk.X, expand=True, pady=5)
         row1_cf.pack(side=tk.TOP, fill=tk.X)
         row2_cf.pack(side=tk.TOP, fill=tk.X)
         row3_cf.pack(side=tk.TOP, fill=tk.X)
@@ -398,6 +408,7 @@ class CreateForm(PaymentFrame):
         self.nds.set(20)
         self.desc_text.delete("1.0", tk.END)
         self.plan_date_entry.set_date(datetime.now())
+        self.approval_box.set('')
 
     def _convert_date(self, date, output=None):
         """ Take date and convert it into output format.
@@ -444,6 +455,8 @@ class CreateForm(PaymentFrame):
                     messagetitle, 'Не указана сумма'
             )
             return
+        first_approval = (self.approvals_for_first_stage[self.approval_box.get()]
+                          if self.approval_box.get() else None)
         request = {'mvz': self.mvz_sap.cget('text') or None,
                    'office': self.office_box.get(),
                    'categoryID': self.categories[self.category_box.get()],
@@ -452,7 +465,8 @@ class CreateForm(PaymentFrame):
                    'plan_date': self._convert_date(self.plan_date_entry.get()),
                    'sumtotal': sumtotal,
                    'nds':  self.nds.get(),
-                   'text': self.desc_text.get("1.0", tk.END)
+                   'text': self.desc_text.get("1.0", tk.END),
+                   'approval': first_approval
                    }
         created_success = self.conn.create_request(userID=self.userID, **request)
         if created_success == 1:
@@ -478,6 +492,7 @@ class CreateForm(PaymentFrame):
         """ When button "Создать из заявки" from PreviewForm is activated,
         fill some fields taken from choosed in PreviewForm request.
         """
+        self._clear()
         self.mvz_current.set(mvz)
         self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0] or '')
         self.office_box.set(office)
@@ -509,6 +524,10 @@ class CreateForm(PaymentFrame):
         self.nds_label.pack(side=tk.RIGHT)
         self.sum_entry.pack(side=tk.RIGHT, padx=11, pady=5)
         self.sum_label.pack(side=tk.RIGHT)
+
+    def _row4_pack(self):
+        self.approval_label.pack(side=tk.LEFT)
+        self.approval_box.pack(side=tk.LEFT, padx=5)
 
     def _top_pack(self):
         self.main_label.pack(side=tk.TOP, expand=False, anchor=tk.NW)
@@ -1262,7 +1281,8 @@ if __name__ == '__main__':
                              mvz=[('20511RC191', '20511RC191', 'Офис'),
                                   ('40900A2595', '40900A2595', 'Офис')],
                              categories=[('Cat1', 1), ('Cat2', 2)],
-                             allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)]
+                             allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)],
+                             approvals_for_first_stage=[('a', 1), ('b', 2)]
                              )
             app.mainloop()
         except Exception as e:

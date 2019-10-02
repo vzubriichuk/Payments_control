@@ -28,13 +28,16 @@ def main():
 
             # load references
             user_info = UserInfo(*sql.get_user_info())
+            # Restriction: users in approvals_for_first_stage
+            # should have different names to be distinguished
             refs = {'connection': sql,
                     'user_info': user_info,
                     'mvz': sql.get_MVZ(user_info),
                     'categories': sql.get_categories(user_info),
                     'allowed_initiators': sql.get_allowed_initiators(user_info.UserID,
                                                                      user_info.AccessType,
-                                                                     user_info.isSuperUser)
+                                                                     user_info.isSuperUser),
+                    'approvals_for_first_stage': sql.get_approvals_for_first_stage()
                     }
             # Run app
             app = tkp.PaymentApp(**refs)
