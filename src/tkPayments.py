@@ -152,14 +152,15 @@ class PaymentApp(tk.Tk):
         screen_height = self.winfo_screenheight()
 
         start_x = int((screen_width/2) - (w/2))
-        start_y = int((screen_height/2) - (h/2))
+        start_y = int((screen_height/2) - (h*0.55))
 
         self.geometry('{}x{}+{}+{}'.format(w, h, start_x, start_y))
 
-    def _fill_CreateForm(self, МВЗ, Офис, Категория, Контрагент, **kwargs):
+    def _fill_CreateForm(self, МВЗ, Офис, Категория, Контрагент, Описание,
+                         **kwargs):
         """ Control function to transfer data from Preview- to CreateForm. """
         frame = self._frames['CreateForm']
-        frame._fill_from_PreviewForm(МВЗ, Офис, Категория, Контрагент)
+        frame._fill_from_PreviewForm(МВЗ, Офис, Категория, Контрагент, Описание)
 
     def _show_frame(self, frame_name):
         """ Show a frame for the given frame name. """
@@ -488,7 +489,8 @@ class CreateForm(PaymentFrame):
                     messagetitle, 'Произошла ошибка при создании заявки'
             )
 
-    def _fill_from_PreviewForm(self, mvz, office, category, contragent):
+    def _fill_from_PreviewForm(self, mvz, office, category, contragent,
+                               description):
         """ When button "Создать из заявки" from PreviewForm is activated,
         fill some fields taken from choosed in PreviewForm request.
         """
@@ -497,8 +499,8 @@ class CreateForm(PaymentFrame):
         self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0] or '')
         self.office_box.set(office)
         self.category_box.set(category)
-        self.contragent_entry.delete(0, tk.END)
         self.contragent_entry.insert(0, contragent)
+        self.desc_text.insert('end', description)
 
     def _row1_pack(self):
         self.mvz_label.pack(side=tk.LEFT, pady=5)
