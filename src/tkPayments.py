@@ -90,6 +90,7 @@ class PaymentApp(tk.Tk):
                        "<Control-Ucircumflex>", "<Control-ucircumflex>",
                        "<Control-twosuperior>", "<Control-threesuperior>",
                        "<KeyPress-F5>")
+        self.bind_all("<Key>", self._onKeyRelease, '+')
         self.bind("<<create>>", self._create_request)
         self.active_frame = None
         # handle the window close event
@@ -161,6 +162,18 @@ class PaymentApp(tk.Tk):
         """ Control function to transfer data from Preview- to CreateForm. """
         frame = self._frames['CreateForm']
         frame._fill_from_PreviewForm(МВЗ, Офис, Категория, Контрагент, Описание)
+
+    def _onKeyRelease(*args):
+        event = args[1]
+        # check if Ctrl pressed
+        if not (event.state == 12 or event.state == 14):
+            return
+        if event.keycode == 88 and event.keysym.lower() != 'x':
+            event.widget.event_generate("<<Cut>>")
+        elif event.keycode == 86 and event.keysym.lower() != 'v':
+            event.widget.event_generate("<<Paste>>")
+        elif event.keycode == 67 and event.keysym.lower() != 'c':
+            event.widget.event_generate("<<Copy>>")
 
     def _show_frame(self, frame_name):
         """ Show a frame for the given frame name. """
