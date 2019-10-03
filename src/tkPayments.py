@@ -490,7 +490,7 @@ class CreateForm(PaymentFrame):
             self._clear()
             self.controller._show_frame('PreviewForm')
         elif created_success == 0:
-            dat = self._convert_date(request['plan_date'], output="%B %Y")
+            dat = self._convert_date(self.plan_date_entry.get(), output="%B %Y")
             messagebox.showerror(
                     messagetitle,
                     'Превышен лимит суммы на {}.\n'
