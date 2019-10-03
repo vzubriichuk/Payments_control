@@ -500,7 +500,8 @@ class CreateForm(PaymentFrame):
         self.office_box.set(office)
         self.category_box.set(category)
         self.contragent_entry.insert(0, contragent)
-        self.desc_text.insert('end', description)
+        self.desc_text.insert('end', description.strip() if type(description) == str
+                              else description)
 
     def _row1_pack(self):
         self.mvz_label.pack(side=tk.LEFT, pady=5)
