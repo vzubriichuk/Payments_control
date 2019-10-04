@@ -793,7 +793,7 @@ class PreviewForm(PaymentFrame):
         screen_height = self.winfo_screenheight()
 
         start_x = int((screen_width/2) - (w/2))
-        start_y = int((screen_height/2) - (h/2))
+        start_y = int((screen_height/2) - (h * 0.7))
 
         if static_geometry == True:
             newlevel.geometry('{}x{}+{}+{}'.format(w, h, start_x, start_y))
