@@ -200,7 +200,10 @@ class DBConnect(object):
         where 1=1
         '''
         if just_for_approval:
-            query += 'and pl.StatusID = 1 and appr.UserID = {}\n'.format(user_info.UserID)
+            if user_info.UserID == 24:
+                query += 'and pl.StatusID = 1 and appr.UserID in (9, 24)\n'
+            else:
+                query += 'and pl.StatusID = 1 and appr.UserID = {}\n'.format(user_info.UserID)
         else:
             if not user_info.isSuperUser:
                 query += "and (pl.UserID = {0} or exists(select * from payment.PaymentsApproval _appr \
