@@ -479,7 +479,7 @@ class CreateForm(PaymentFrame):
                    'plan_date': self._convert_date(self.plan_date_entry.get()),
                    'sumtotal': sumtotal,
                    'nds':  self.nds.get(),
-                   'text': self.desc_text.get("1.0", tk.END),
+                   'text': self.desc_text.get("1.0", tk.END).strip(),
                    'approval': first_approval
                    }
         created_success = self.conn.create_request(userID=self.userID, **request)
