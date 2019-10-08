@@ -17,7 +17,7 @@ from tkHyperlinkManager import HyperlinkManager
 from math import ceil
 from xl import export_to_excel
 import locale
-import os
+import os, zlib
 import tkinter as tk
 
 # example of subsription and default recipient
@@ -25,6 +25,12 @@ EMAIL_TO = b'\xd0\xa4\xd0\xbe\xd0\xb7\xd0\xb7\xd0\xb8|\
 \xd0\x9b\xd0\xbe\xd0\xb3\xd0\xb8\xd1\x81\xd1\x82\xd0\xb8\xd0\xba\xd0\xb0|\
 \xd0\x90\xd0\xbd\xd0\xb0\xd0\xbb\xd0\xb8\xd1\x82\xd0\xb8\xd0\xba\xd0\xb8'.decode()
 
+# example of path to independent report
+REPORT_PATH = zlib.decompress(b'x\x9c\x8b\x89I\xcb\xaf\xaa\xaa\xd4\xcbI\xcc\
+\x8bq\xc9O.\xcdM\xcd+)\x8e\xf1\xc8\xcfI\xc9\xccK\x8fqI-H,*\x81\x88\xf9\xe4\
+\xa7g\x16\x97df\'\xc6\xb8e\xe6\xc5\\Xpa\xc3\xc5\xc6\x0b\xfb/6\\\xd8za\x0b\x10\
+\xef\x06\xe2\xbd\x17v\\\xd8\x1a\x7fa;P\xaa\t(\x01$c.L\xb9\xb0\xef\xc2~\x85\x0b\
+\xfb\x80"\xed\x17\xb6\x02\xc9n\x00\x9b\x8c?\xef').decode()
 
 class AccessError(tk.Tk):
     """ Raise an error when user doesn't have permission to work with app.
@@ -737,10 +743,13 @@ class PreviewForm(PaymentFrame):
                          command=self._export_to_excel)
         bt4.pack(side=tk.RIGHT, padx=10, pady=10)
 
-        if self.userID in (9, 24, 76):
+        if self.userID in (6, 9, 24, 76):
             bt4a = ttk.Button(bottom_cf, text="Изменить лимиты", width=20,
-                             command=self._alter_limits)
+                command=self._alter_limits)
             bt4a.pack(side=tk.RIGHT, padx=10, pady=10)
+            bt4b = ttk.Button(bottom_cf, text="Открыть отчёт", width=20,
+                command=self._open_report)
+            bt4b.pack(side=tk.RIGHT, padx=10, pady=10)
 
         # Pack frames
         bottom_cf.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
@@ -877,6 +886,10 @@ class PreviewForm(PaymentFrame):
         scrolltable = tk.Scrollbar(parent, command=self.table.yview)
         self.table.configure(yscrollcommand=scrolltable.set)
         scrolltable.pack(side=tk.RIGHT, fill=tk.Y)
+
+    def _open_report(self):
+        """ Open independent report. """
+        os.startfile(os.path.join(REPORT_PATH, 'Заявки_на_оплату.xlsb'))
 
     def _raise_Toplevel(self, frame, title, width, height,
                         static_geometry=True, options=()):
