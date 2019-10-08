@@ -171,7 +171,7 @@ class DBConnect(object):
     @monitor_network_state
     def get_paymentslist(self, user_info, initiator, mvz, office,
                          plan_date_m, plan_date_y, sumtotal_from, sumtotal_to,
-                         nds, just_for_approval):
+                         nds, just_for_approval, statusID):
         """ Generates query according to user's acces type and filters.
         """
         query = '''
@@ -224,11 +224,21 @@ class DBConnect(object):
                 query += "and SumNoTax <= {}\n".format(sumtotal_to)
             if not nds == -1:
                 query += "and Tax = {}\n".format(nds)
+            if statusID:
+                query += "and pl.StatusID = {}\n".format(statusID)
         # specific sorting for several people
         if user_info.UserID in (42, 81, 75):
             query += "order by IIF(pl.StatusID in (2, 4), 2, 1) ASC, ID DESC"
         else:
             query += "order by ID DESC" # the same as created(datetime) DESC
+        self.__cursor.execute(query)
+        return self.__cursor.fetchall()
+
+    @monitor_network_state
+    def get_status_list(self):
+        """ Returns status list.
+        """
+        query = "exec payment.get_status_list"
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 

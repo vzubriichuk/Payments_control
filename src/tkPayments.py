@@ -24,13 +24,13 @@ import tkinter as tk
 EMAIL_TO = b'\xd0\xa4\xd0\xbe\xd0\xb7\xd0\xb7\xd0\xb8|\
 \xd0\x9b\xd0\xbe\xd0\xb3\xd0\xb8\xd1\x81\xd1\x82\xd0\xb8\xd0\xba\xd0\xb0|\
 \xd0\x90\xd0\xbd\xd0\xb0\xd0\xbb\xd0\xb8\xd1\x82\xd0\xb8\xd0\xba\xd0\xb8'.decode()
-
 # example of path to independent report
 REPORT_PATH = zlib.decompress(b'x\x9c\x8b\x89I\xcb\xaf\xaa\xaa\xd4\xcbI\xcc\
 \x8bq\xc9O.\xcdM\xcd+)\x8e\xf1\xc8\xcfI\xc9\xccK\x8fqI-H,*\x81\x88\xf9\xe4\
 \xa7g\x16\x97df\'\xc6\xb8e\xe6\xc5\\Xpa\xc3\xc5\xc6\x0b\xfb/6\\\xd8za\x0b\x10\
 \xef\x06\xe2\xbd\x17v\\\xd8\x1a\x7fa;P\xaa\t(\x01$c.L\xb9\xb0\xef\xc2~\x85\x0b\
 \xfb\x80"\xed\x17\xb6\x02\xc9n\x00\x9b\x8c?\xef').decode()
+
 
 class AccessError(tk.Tk):
     """ Raise an error when user doesn't have permission to work with app.
@@ -569,13 +569,14 @@ class CreateForm(PaymentFrame):
 
 class PreviewForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info, mvz,
-                 allowed_initiators, categories, **kwargs):
+                 allowed_initiators, categories, status_list, **kwargs):
         super().__init__(parent, controller, connection, user_info,
                          mvz, categories)
         self.office = tuple(sorted(set(x for lst in map(lambda v: v[1],
                                                         self.mvz.values()) for x in lst),
                                    key=lambda s: '' if s == 'Все' else s))
         self.initiatorsID, self.initiators = zip(*allowed_initiators)
+        self.statusID, self.status_list = zip(*[(None, 'Все'),] + status_list)
         # EXTENDED_MODE activates extended selectmode for treeview, realized
         # using checkboxes, and allows to approve multiple requests
         self.EXTENDED_MODE = (True if user_info.isSuperUser
@@ -615,6 +616,10 @@ class PreviewForm(PaymentFrame):
         self.office_label = tk.Label(row1_cf, text='Офис', padx=20)
         self.office_box = ttk.Combobox(row1_cf, width=20, state='readonly')
         self.office_box['values'] = self.office
+
+        self.status_label = tk.Label(row1_cf, text='Статус', padx=20)
+        self.status_box = ttk.Combobox(row1_cf, width=10, state='readonly')
+        self.status_box['values'] = self.status_list
 
         # Pack row1_cf
         self._row1_pack()
@@ -813,6 +818,7 @@ class PreviewForm(PaymentFrame):
         self.initiator_box.set('Все')
         self.mvz_box.set('Все')
         self.office_box.set('Все')
+        self.status_box.set('Все')
         self.plan_date_entry_m.set_default_option()
         self.year.set(datetime.now().year)
         self.sumtotal_from.set('0,00')
@@ -873,10 +879,11 @@ class PreviewForm(PaymentFrame):
                 self.table.heading(head, text=head, anchor=tk.CENTER)
                 self.table.column(head, width=50*len(head), anchor=tk.CENTER)
 
-        #self._show_rows(rows=((123, 456, 789), ('abc', 'def', 'ghk')))  # for debug
+        # for debug
+        #self._show_rows(rows=((123, 456, 789), ('abc', 'def', 'ghk')))
 
-        for tag, bg in zip(('Отозв.', 'Утв.', 'Откл.', 'На согл.'),
-                           ('lightgray', 'lightgreen', '#f66e6e', '#ffffc8')):
+        for tag, bg in zip(self.status_list[1:5],
+                           ('#ffffc8', 'lightgray', 'lightgreen', '#f66e6e')):
             self.table.tag_configure(tag, background=bg)
         #self.table.tag_configure('oddrow', background='lightgray')
 
@@ -923,6 +930,8 @@ class PreviewForm(PaymentFrame):
         self.initiator_box.pack(side=tk.LEFT, padx=5, pady=5)
         self.mvz_label.pack(side=tk.LEFT)
         self.mvz_box.pack(side=tk.LEFT, padx=5, pady=5)
+        self.status_box.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.status_label.pack(side=tk.RIGHT)
         self.office_box.pack(side=tk.RIGHT, padx=5, pady=5)
         self.office_label.pack(side=tk.RIGHT)
 
@@ -954,7 +963,9 @@ class PreviewForm(PaymentFrame):
                    'sumtotal_to': float(self.sumtotal_to.get_float_form()
                                         if self.sum_entry_to.get() else 0),
                    'nds':  self.nds.get(),
-                   'just_for_approval': self.show_for_approve.get()
+                   'just_for_approval': self.show_for_approve.get(),
+                   'statusID': (self.status_box.current() and
+                              self.statusID[self.status_box.current()])
                    }
         if not filters['plan_date_m']:
             messagebox.showerror(
@@ -1311,7 +1322,8 @@ if __name__ == '__main__':
                                   ('40900A2595', '40900A2595', 'Офис')],
                              categories=[('Cat1', 1), ('Cat2', 2)],
                              allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)],
-                             approvals_for_first_stage=[('a', 1), ('b', 2)]
+                             approvals_for_first_stage=[('a', 1), ('b', 2)],
+                             status_list=[(1, 'На согл.'), (2, 'Отозв.')]
                              )
             app.mainloop()
         except Exception as e:

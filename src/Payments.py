@@ -39,7 +39,8 @@ def main():
                     'allowed_initiators': sql.get_allowed_initiators(user_info.UserID,
                                                                      user_info.AccessType,
                                                                      user_info.isSuperUser),
-                    'approvals_for_first_stage': sql.get_approvals_for_first_stage()
+                    'approvals_for_first_stage': sql.get_approvals_for_first_stage(),
+                    'status_list': sql.get_status_list()
                     }
             # Run app
             app = tkp.PaymentApp(**refs)
