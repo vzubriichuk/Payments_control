@@ -6,7 +6,9 @@ Created on Wed May 15 22:11:05 2019
 """
 from collections import namedtuple
 from db_connect import DBConnect
-from log_error import writelog
+#from log_error import writelog
+# Temporary shut down logging to check if hanging of payments_checker.py
+# is an issue because of attempt to access the same log file simultaniously
 from os import path
 from pyodbc import Error as SQLError
 from singleinstance import Singleinstance
@@ -46,7 +48,7 @@ def main():
     except SQLError as e:
         # login failed
         if e.args[0] in ('28000', '42000'):
-            writelog(e)
+            #writelog(e)
             tkp.LoginError()
         else:
             raise
@@ -60,7 +62,7 @@ if __name__ == '__main__':
             sys.exit()
         main()
     except Exception as e:
-        writelog(e)
+        #writelog(e)
         print(e)
     finally:
         sys.exit()
