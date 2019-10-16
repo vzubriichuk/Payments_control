@@ -703,9 +703,9 @@ class PreviewForm(PaymentFrame):
 
         # column name and width
         #self.headings=('a', 'bb', 'cccc')  # for debug
-        self.headings = {'ID': 0, 'InitiatorID': 0, '№ заявки': 100,
+        self.headings = {'№ п/п': 30, 'ID': 0, 'InitiatorID': 0, '№ заявки': 100,
             'Инициатор': 130, 'Дата создания': 80, 'Дата/время создания': 120,
-            'CSP':60, 'МВЗ SAP': 60, 'МВЗ': 150, 'Офис': 80, 'Категория': 80,
+            'CSP':30, 'МВЗ SAP': 70, 'МВЗ': 150, 'Офис': 80, 'Категория': 80,
             'Контрагент': 60, 'Плановая дата': 90, 'Сумма без НДС': 85,
             'Сумма с НДС': 85, 'Статус': 45, 'Статус заявки': 120,
             'Описание': 120, 'ID Утверждающего': 0, 'Утверждающий': 120}
@@ -841,7 +841,8 @@ class PreviewForm(PaymentFrame):
     def _export_to_excel(self):
         if not self.rows:
             return
-        isExported = export_to_excel(self.headings, self.rows)
+        headings = {k:v for k, v in self.headings.items() if k != '№ п/п'}
+        isExported = export_to_excel(headings, self.rows)
         if isExported:
             messagebox.showinfo(
                 'Экспорт в Excel',
@@ -1030,8 +1031,11 @@ class PreviewForm(PaymentFrame):
         if self.table.identify_region(event.x, event.y) == 'heading' and self.rows:
             # determine index of displayed column
             disp_col = int(self.table.identify_column(event.x)[1:]) - 1
+            if disp_col < 1:  # ignore sort by '№ п/п' and checkboxes
+                return
             # determine index of this column in self.rows
-            sort_col = self.table["columns"].index(self.table["displaycolumns"][disp_col])
+            # substract 1 because of added '№ п/п' which don't exist in data
+            sort_col = self.table["columns"].index(self.table["displaycolumns"][disp_col]) - 1
             self.rows.sort(key=lambda x: x[sort_col],
                            reverse=self.sort_reversed_index == sort_col)
             # store index of last sorted column if sort wasn't reversed
@@ -1041,12 +1045,12 @@ class PreviewForm(PaymentFrame):
     def _show_rows(self, rows):
         """ Refresh table with new rows. """
         self.table.delete(*self.table.get_children())
-        for row in rows:
+        for i, row in enumerate(rows):
             # tag = (Status, 'unchecked')
             self.table.insert('', tk.END,
-                              values=tuple(map(lambda val: self._format_float(val)
-                               if isinstance(val, Decimal) else val, row)),
-                              tags=(row[-5], 'unchecked'))
+                values=(i+1,) + tuple(map(lambda val: self._format_float(val)
+                if isinstance(val, Decimal) else val, row)),
+                tags=(row[-5], 'unchecked'))
 
     def _toggle_all_rows(self, event=None):
         if self.all_rows_checked.get():
@@ -1065,7 +1069,7 @@ class DetailedPreview(tk.Frame):
         self.parentform = parentform
         self.conn = conn
         self.approveclass_bool = isinstance(self, ApproveConfirmation)
-        self.paymentID, self.initiatorID = info[:2]
+        self.paymentID, self.initiatorID = info[1:3]
         self.userID = userID
         self.rowtags = tags
 
@@ -1078,7 +1082,7 @@ class DetailedPreview(tk.Frame):
         # Add info to table_frame
         fonts = (('Arial', 9, 'bold'), ('Arial', 10))
         for row in zip(range(len(head)), zip(head, info)):
-            if row[1][0] not in ('ID', 'InitiatorID', 'Дата создания',
+            if row[1][0] not in ('№ п/п', 'ID', 'InitiatorID', 'Дата создания',
                                  'ID Утверждающего', 'Утверждающий', 'Статус'):
                 self._newRow(self.table_frame, fonts, *row)
 
@@ -1136,7 +1140,7 @@ class DetailedPreview(tk.Frame):
 
         numberOfLines = []       # List to store number of lines needed
         columnWidths = [20, 50]  # Width of the different columns in the table
-        stringLength = []        # Lengt of the strings in the info2Add list
+        stringLength = []        # Length of the strings in the info2Add list
 
         # Find the length of each element in the info2Add list
         for item in info:
