@@ -170,10 +170,12 @@ class DBConnect(object):
 
     @monitor_network_state
     def get_paymentslist(self, user_info, initiator, mvz, office,
-                         plan_date_m, plan_date_y, sumtotal_from, sumtotal_to,
+                         date_type, date_m, date_y, sumtotal_from, sumtotal_to,
                          nds, just_for_approval, statusID):
         """ Generates query according to user's acces type and filters.
         """
+        # determine explicitly which date_type has been chosen
+        date_type = ('date_planed', 'date_created')[date_type]
         query = '''
         select pl.ID as ID, pl.UserID as InitiatorID,
            'ЛГ-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.ID as varchar(7)) as Num,
@@ -214,10 +216,10 @@ class DBConnect(object):
                 query += "and obj.MVZsap = '{}'\n".format(mvz)
             if office:
                 query += "and obj.ServiceName = '{}'\n".format(office)
-            if plan_date_y and all(map(str.isdigit, str(plan_date_y))):
-                query += "and year(date_planed) = {}\n".format(plan_date_y)
-            if plan_date_m:
-                query += "and month(date_planed) in ({})\n".format(plan_date_m)
+            if date_y and all(map(str.isdigit, str(date_y))):
+                query += "and year({}) = {}\n".format(date_type, date_y)
+            if date_m:
+                query += "and month({}) in ({})\n".format(date_type, date_m)
             if sumtotal_from:
                 query += "and SumNoTax >= {}\n".format(sumtotal_from)
             if sumtotal_to:

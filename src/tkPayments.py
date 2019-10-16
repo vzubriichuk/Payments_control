@@ -628,14 +628,15 @@ class PreviewForm(PaymentFrame):
         # Second Fill Frame with (Plan date, Sum, Tax)
         row2_cf = tk.Frame(filterframe, name='row2_cf', padx=15)
 
-        self.plan_date_label_m = tk.Label(row2_cf, text='Плановая дата:  месяц', padx=10)
-        #self.plan_date_entry_m = ttk.Combobox(row2_cf, width=15, state='readonly')
-        self.plan_date_entry_m = MultiselectMenu(row2_cf, self.month_default,
+        self.date_label = tk.Label(row2_cf, text='Дата', padx=10)
+        self.date_type = ttk.Combobox(row2_cf, width=12, state='readonly')
+        self.date_type['values'] = ['плановая', 'создания']
+        self.date_label_m = tk.Label(row2_cf, text=':  месяц', padx=10)
+        self.date_entry_m = MultiselectMenu(row2_cf, self.month_default,
                                                  self.month, width=15)
-        #self.plan_date_entry_m['values'] = self.month
-        self.plan_date_label_y = tk.Label(row2_cf, text='год', padx=20)
+        self.date_label_y = tk.Label(row2_cf, text='год', padx=20)
         self.year = tk.IntVar()
-        self.plan_date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2029,
+        self.date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2029,
                                             font=('Arial', 9), textvariable=self.year)
         self.sum_label_from = tk.Label(row2_cf, text='Сумма без НДС: от')
         self.sumtotal_from = StringSumVar()
@@ -819,7 +820,8 @@ class PreviewForm(PaymentFrame):
         self.mvz_box.set('Все')
         self.office_box.set('Все')
         self.status_box.set('Все')
-        self.plan_date_entry_m.set_default_option()
+        self.date_type.set('плановая')
+        self.date_entry_m.set_default_option()
         self.year.set(datetime.now().year)
         self.sumtotal_from.set('0,00')
         self.sumtotal_to.set('')
@@ -936,10 +938,12 @@ class PreviewForm(PaymentFrame):
         self.office_label.pack(side=tk.RIGHT)
 
     def _row2_pack(self):
-        self.plan_date_label_m.pack(side=tk.LEFT)
-        self.plan_date_entry_m.pack(side=tk.LEFT)
-        self.plan_date_label_y.pack(side=tk.LEFT)
-        self.plan_date_entry_y.pack(side=tk.LEFT, anchor=tk.SW, pady=10)
+        self.date_label.pack(side=tk.LEFT)
+        self.date_type.pack(side=tk.LEFT)
+        self.date_label_m.pack(side=tk.LEFT)
+        self.date_entry_m.pack(side=tk.LEFT)
+        self.date_label_y.pack(side=tk.LEFT)
+        self.date_entry_y.pack(side=tk.LEFT, anchor=tk.SW, pady=10)
         self.nds0.pack(side=tk.RIGHT, padx=7)
         self.nds7.pack(side=tk.RIGHT, padx=7)
         self.nds20.pack(side=tk.RIGHT, padx=7)
@@ -956,8 +960,9 @@ class PreviewForm(PaymentFrame):
                    'mvz': self.mvz[self.mvz_box.get()][0],
                    'office': (self.office_box.current() and
                               self.office[self.office_box.current()]),
-                   'plan_date_m': self.plan_date_entry_m.get_selected(),
-                   'plan_date_y': self.year.get() if self.plan_date_entry_y.get() else 0.,
+                   'date_type': self.date_type.current(),
+                   'date_m': self.date_entry_m.get_selected(),
+                   'date_y': self.year.get() if self.date_entry_y.get() else 0.,
                    'sumtotal_from': float(self.sumtotal_from.get_float_form()
                                           if self.sum_entry_from.get() else 0),
                    'sumtotal_to': float(self.sumtotal_to.get_float_form()
@@ -967,7 +972,7 @@ class PreviewForm(PaymentFrame):
                    'statusID': (self.status_box.current() and
                               self.statusID[self.status_box.current()])
                    }
-        if not filters['plan_date_m']:
+        if not filters['date_m']:
             messagebox.showerror(
                     self.controller.title(), 'Не выбран месяц'
             )
