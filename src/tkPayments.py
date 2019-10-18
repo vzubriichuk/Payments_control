@@ -1090,6 +1090,8 @@ class PreviewForm(PaymentFrame):
     def _show_rows(self, rows):
         """ Refresh table with new rows. """
         self.table.delete(*self.table.get_children())
+        if not rows:
+            return
         for i, row in enumerate(rows):
             # tag = (Status, 'unchecked')
             self.table.insert('', tk.END,
