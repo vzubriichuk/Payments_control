@@ -178,7 +178,7 @@ class DBConnect(object):
         date_type = ('date_planed', 'date_created')[date_type]
         query = '''
         select pl.ID as ID, pl.UserID as InitiatorID,
-           'ЛГ-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.ID as varchar(7)) as Num,
+           'ЛГ-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.RealID as varchar(7)) as Num,
            pp.ShortUserName, cast(date_created as date) as date_created,
            cast(date_created as smalldatetime) as datetime_created,
            isnull(CSP, '') as CSP, isnull(obj.MVZsap, '') as MVZsap,
