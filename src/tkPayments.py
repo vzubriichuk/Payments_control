@@ -7,7 +7,7 @@ Created on Wed May 15 22:51:04 2019
 from _version import __version__
 from checkboxtreeview import CheckboxTreeview
 from calendar import month_name
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from label_grid import LabelGrid
 from multiselect import MultiselectMenu
@@ -460,33 +460,10 @@ class CreateForm(PaymentFrame):
 
     def _create_request(self):
         messagetitle = 'Создание заявки'
-        if not self.mvz_current.get():
-            messagebox.showerror(
-                    messagetitle, 'Не указано МВЗ'
-            )
-            return
-        if not self.office_box.get():
-            messagebox.showerror(
-                    messagetitle, 'Не выбран офис'
-            )
-            return
-        if not self.category_box.get():
-            messagebox.showerror(
-                    messagetitle, 'Не выбрана категория'
-            )
-            return
-        if not self._validate_plan_date():
-            messagebox.showerror(
-                    messagetitle,
-                    'Плановая дата не может быть сегодняшней или ранее'
-            )
-            return
         sumtotal = float(self.sumtotal.get_float_form()
                          if self.sum_entry.get() else 0)
-        if not sumtotal:
-            messagebox.showerror(
-                    messagetitle, 'Не указана сумма'
-            )
+        is_validated = self._validate_request_creation(messagetitle, sumtotal)
+        if not is_validated:
             return
         first_approval = (self.approvals_for_first_stage[self.approval_box.get()]
                           if self.approval_box.get() else None)
@@ -574,15 +551,63 @@ class CreateForm(PaymentFrame):
         self.limit_month.pack(side=tk.LEFT, expand=False, anchor=tk.W)
         self.limit_sum.pack(side=tk.LEFT, expand=False, anchor=tk.W)
 
+    def _validate_request_creation(self, messagetitle, sumtotal):
+        """ Check if all fields are filled properly. """
+        if not self.mvz_current.get():
+            messagebox.showerror(
+                    messagetitle, 'Не указано МВЗ'
+            )
+            return False
+        if not self.office_box.get():
+            messagebox.showerror(
+                    messagetitle, 'Не выбран офис'
+            )
+            return False
+        if not self.category_box.get():
+            messagebox.showerror(
+                    messagetitle, 'Не выбрана категория'
+            )
+            return False
+        if not sumtotal:
+            messagebox.showerror(
+                    messagetitle, 'Не указана сумма'
+            )
+            return False
+        date_validation = self._validate_plan_date()
+        if date_validation == 'incorrect_date':
+            messagebox.showerror(
+                    messagetitle,
+                    'Плановая дата не может быть прошедшей'
+            )
+            return False
+        elif date_validation == 'ask_confirmation':
+            confirmed = messagebox.askyesno(title='Подтвердите действие',
+                            message='Создать заявку на сегодняшную дату?')
+            if not confirmed:
+                return False
+        elif date_validation != 'correct_date':
+            messagebox.showerror(title='Ошибка',
+                            message=('Возникло непредвиденное исключение\n{}'
+                                     .format(date_validation))
+                                )
+            return False
+        return True
+
     def _validate_plan_date(self):
         """ Validate date correctness according to rules. """
-        date = self.plan_date_entry.get()
         try:
-            date = datetime.strptime(date, '%d.%m.%Y')
-        except ValueError:
-            date = datetime.strptime(date, '%d.%m.%y')
-        today = datetime.now()
-        return date > today
+            plan_date = self.plan_date_entry.get()
+            try:
+                plan_date = datetime.strptime(plan_date, '%d.%m.%Y').date()
+            except ValueError:
+                plan_date = datetime.strptime(plan_date, '%d.%m.%y').date()
+            today = date.today()
+            return ('correct_date' if plan_date > today else
+                    'ask_confirmation' if plan_date == today else
+                    'incorrect_date'
+                    )
+        except Exception as e:
+            return e
 
 
 class PreviewForm(PaymentFrame):
