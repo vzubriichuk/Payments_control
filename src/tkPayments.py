@@ -90,7 +90,7 @@ class PaymentApp(tk.Tk):
         self.state_PreviewForm = 'normal'
         # geometry_storage {Framename:(width, height)}
         self._geometry = {'PreviewForm': (1200, 600),
-                          'CreateForm': (750, 400)}
+                          'CreateForm': (750, 440)}
         # Virtual event for creating request
         self.event_add("<<create>>", "<Control-S>", "<Control-s>",
                        "<Control-Ucircumflex>", "<Control-ucircumflex>",
@@ -352,6 +352,17 @@ class CreateForm(PaymentFrame):
 
         self._row3_pack()
 
+        # Fourth Fill Frame with (is_cashless)
+        row4_cf = tk.Frame(self, name='row4_cf', padx=15)
+
+        self.cashless_label = tk.Label(row4_cf, text='Вид платежа', padx=10)
+        self.is_cashless = tk.IntVar()
+        self.is_cashless.set(1)
+        self.cashless_radiobutton0 = ttk.Radiobutton(row4_cf, text="наличный",
+                                      variable=self.is_cashless, value=0)
+        self.cashless_radiobutton1 = ttk.Radiobutton(row4_cf, text="безналичный",
+                                      variable=self.is_cashless, value=1)
+
         # Text Frame
         text_cf = ttk.LabelFrame(self, text=' Описание заявки ', name='text_cf')
 
@@ -385,9 +396,10 @@ class CreateForm(PaymentFrame):
         top.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         bottom_cf.pack(side=tk.BOTTOM, fill=tk.X)
         appr_cf.pack(side=tk.BOTTOM, fill=tk.X, expand=True, pady=5)
-        row1_cf.pack(side=tk.TOP, fill=tk.X)
-        row2_cf.pack(side=tk.TOP, fill=tk.X)
-        row3_cf.pack(side=tk.TOP, fill=tk.X)
+        row1_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
+        row2_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
+        row3_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
+        row4_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
         text_cf.pack(side=tk.TOP, fill=tk.X, expand=True, padx=10, pady=5)
 
     def _check_limit(self, *args, **kwargs):
@@ -429,6 +441,7 @@ class CreateForm(PaymentFrame):
         self.desc_text.delete("1.0", tk.END)
         self.plan_date_entry.set_date(datetime.now())
         self.approval_box.set('')
+        self.is_cashless.set(1)
 
     def _convert_date(self, date, output=None):
         """ Take date and convert it into output format.
@@ -486,7 +499,8 @@ class CreateForm(PaymentFrame):
                    'sumtotal': sumtotal,
                    'nds':  self.nds.get(),
                    'text': self.desc_text.get("1.0", tk.END).strip(),
-                   'approval': first_approval
+                   'approval': first_approval,
+                   'is_cashless': self.is_cashless.get()
                    }
         created_success = self.conn.create_request(userID=self.userID, **request)
         if created_success == 1:
@@ -523,31 +537,34 @@ class CreateForm(PaymentFrame):
                               else description)
 
     def _row1_pack(self):
-        self.mvz_label.pack(side=tk.LEFT, pady=5)
-        self.mvz_box.pack(side=tk.LEFT, padx=5, pady=5)
-        self.mvz_sap.pack(side=tk.LEFT, pady=5)
-        self.category_box.pack(side=tk.RIGHT, padx=5, pady=5)
-        self.category_label.pack(side=tk.RIGHT, pady=5)
+        self.mvz_label.pack(side=tk.LEFT)
+        self.mvz_box.pack(side=tk.LEFT, padx=5)
+        self.mvz_sap.pack(side=tk.LEFT)
+        self.category_box.pack(side=tk.RIGHT, padx=5)
+        self.category_label.pack(side=tk.RIGHT)
 
     def _row2_pack(self):
-        self.office_label.pack(side=tk.LEFT, pady=5)
-        self.office_box.pack(side=tk.LEFT, pady=5)
-        self.csp_entry.pack(side=tk.RIGHT, padx=5, pady=5)
-        self.csp.pack(side=tk.RIGHT, pady=5)
-        self.contragent_entry.pack(side=tk.RIGHT, padx=5, pady=5)
-        self.contragent_label.pack(side=tk.RIGHT, pady=5)
+        self.office_label.pack(side=tk.LEFT)
+        self.office_box.pack(side=tk.LEFT)
+        self.csp_entry.pack(side=tk.RIGHT, padx=5)
+        self.csp.pack(side=tk.RIGHT)
+        self.contragent_entry.pack(side=tk.RIGHT, padx=5)
+        self.contragent_label.pack(side=tk.RIGHT)
 
     def _row3_pack(self):
         self.plan_date_label.pack(side=tk.LEFT)
-        self.plan_date_entry.pack(side=tk.LEFT, padx=5, pady=5)
+        self.plan_date_entry.pack(side=tk.LEFT, padx=5)
         self.nds0.pack(side=tk.RIGHT, padx=7)
         self.nds7.pack(side=tk.RIGHT, padx=7)
         self.nds20.pack(side=tk.RIGHT, padx=8)
         self.nds_label.pack(side=tk.RIGHT)
-        self.sum_entry.pack(side=tk.RIGHT, padx=11, pady=5)
+        self.sum_entry.pack(side=tk.RIGHT, padx=11)
         self.sum_label.pack(side=tk.RIGHT)
 
     def _row4_pack(self):
+        self.cashless_label.pack(side=tk.LEFT)
+        self.cashless_radiobutton0.pack(side=tk.LEFT, padx=7)
+        self.cashless_radiobutton1.pack(side=tk.LEFT, padx=7)
         self.approval_label.pack(side=tk.LEFT)
         self.approval_box.pack(side=tk.LEFT, padx=5)
 
@@ -558,6 +575,7 @@ class CreateForm(PaymentFrame):
         self.limit_sum.pack(side=tk.LEFT, expand=False, anchor=tk.W)
 
     def _validate_plan_date(self):
+        """ Validate date correctness according to rules. """
         date = self.plan_date_entry.get()
         try:
             date = datetime.strptime(date, '%d.%m.%Y')
@@ -707,7 +725,7 @@ class PreviewForm(PaymentFrame):
             'Инициатор': 130, 'Дата создания': 80, 'Дата/время создания': 120,
             'CSP':30, 'МВЗ SAP': 70, 'МВЗ': 150, 'Офис': 80, 'Категория': 80,
             'Контрагент': 60, 'Плановая дата': 90, 'Сумма без НДС': 85,
-            'Сумма с НДС': 85, 'Статус': 45, 'Статус заявки': 120,
+            'Сумма с НДС': 85, 'Вид платежа':0, 'Статус': 45, 'Статус заявки': 120,
             'Описание': 120, 'ID Утверждающего': 0, 'Утверждающий': 120}
 
         if self.EXTENDED_MODE:
@@ -869,7 +887,7 @@ class PreviewForm(PaymentFrame):
             self.table["columns"] = tuple(self.headings.keys())
             self.table["displaycolumns"] = tuple(k for k in self.headings.keys()
                 if k not in ('ID', 'НДС', 'Описание', 'Дата/время создания',
-                             'МВЗ', 'Категория', 'Статус заявки',
+                             'МВЗ', 'Категория', 'Вид платежа', 'Статус заявки',
                              'InitiatorID', 'ID Утверждающего'))
             for head, width in self.headings.items():
                 self.table.heading(head, text=head, anchor=tk.CENTER)
@@ -1018,6 +1036,8 @@ class PreviewForm(PaymentFrame):
                                     self.table.item(curRow).get('values'),
                                     self.table.item(curRow).get('tags'))
                 newlevel.resizable(width=False, height=False)
+                # width is set implicitly in DetailedPreview._newRow
+                # based on columnWidths values
                 self._center_popup_window(newlevel, 500, 400,
                                           static_geometry=False)
                 newlevel.deiconify()

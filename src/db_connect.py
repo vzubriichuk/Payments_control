@@ -57,7 +57,7 @@ class DBConnect(object):
 
     @monitor_network_state
     def create_request(self, userID, mvz, office, categoryID, contragent, csp,
-                       plan_date, sumtotal, nds, text, approval):
+                       plan_date, sumtotal, nds, text, approval, is_cashless):
         """ Executes procedure that creates new request.
         """
         query = '''
@@ -71,12 +71,13 @@ class DBConnect(object):
                                     @SumNoTax = ?,
                                     @Tax = ?,
                                     @CSP = ?,
-                                    @Approval = ?
+                                    @Approval = ?,
+                                    @is_cashless = ?
             '''
         try:
             self.__cursor.execute(query, userID, mvz, office, categoryID,
                                   contragent, plan_date, text,
-                                  sumtotal, nds, csp, approval)
+                                  sumtotal, nds, csp, approval, is_cashless)
             request_allowed = self.__cursor.fetchone()[0]
             self.__db.commit()
             return request_allowed
@@ -185,6 +186,7 @@ class DBConnect(object):
            isnull(co.FullName, 'ТехМВЗ') as FullName, obj.ServiceName,
            cat.CategoryName, isnull(Contragent, '') as Contragent, date_planed,
            SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
+           IIF(pl.is_cashless = 0, 'наличный', 'безналичный') as is_cashless,
            p.ValueName as StatusName, p.ValueDescription, pl.Description, appr.UserID,
            case when pl.StatusID = 1 then isnull(pappr.ShortUserName, '') else '' end as approval
         from payment.PaymentsList pl
