@@ -32,6 +32,24 @@ REPORT_PATH = zlib.decompress(b'x\x9c\x8b\x89I\xcb\xaf\xaa\xaa\xd4\xcbI\xcc\
 \xfb\x80"\xed\x17\xb6\x02\xc9n\x00\x9b\x8c?\xef').decode()
 
 
+class PaymentsError(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+
+class MonthFilterError(PaymentsError):
+    """ Exception raised if month don't chosen in filter.
+
+    Attributes:
+        expression - input expression in which the error occurred;
+        message - explanation of the error.
+    """
+    def __init__(self, expression, message='Не выбран месяц'):
+        self.expression = expression
+        self.message = message
+        super().__init__(self.expression, self.message)
+
+
 class AccessError(tk.Tk):
     """ Raise an error when user doesn't have permission to work with app.
     """
@@ -624,6 +642,11 @@ class PreviewForm(PaymentFrame):
         # using checkboxes, and allows to approve multiple requests
         self.EXTENDED_MODE = (True if user_info.isSuperUser
                               and user_info.AccessType == 2 else False)
+        # List of functions to get payments
+        # determines what payments will be shown when refreshing
+        self.payments_load_list = [self._get_all_payments,
+                                   self._get_payments_for_approval]
+        self.get_payments = self._get_all_payments
         # Parameters for sorting
         self.rows = None  # store all rows for sorting and redrawing
         self.sort_reversed_index = None  # reverse sorting for the last sorted column
@@ -679,7 +702,7 @@ class PreviewForm(PaymentFrame):
                                                  self.month, width=15)
         self.date_label_y = tk.Label(row2_cf, text='год', padx=20)
         self.year = tk.IntVar()
-        self.date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2029,
+        self.date_entry_y = tk.Spinbox(row2_cf, width=7, from_=2019, to=2059,
                                             font=('Arial', 9), textvariable=self.year)
         self.sum_label_from = tk.Label(row2_cf, text='Сумма без НДС: от')
         self.sumtotal_from = StringSumVar()
@@ -710,20 +733,18 @@ class PreviewForm(PaymentFrame):
         # Third Fill Frame (checkbox + button to apply filter)
         row3_cf = tk.Frame(filterframe, name='row3_cf', padx=15)
 
-        self.show_for_approve = tk.IntVar()
-        c = tk.Checkbutton(row3_cf, text="Показать заявки на утверждение (без фильтров)",
-                           variable=self.show_for_approve)
-
+        bt3_0 = ttk.Button(row3_cf, text="Показать все заявки на утверждение",
+                           width=40, command=self._show_payments_for_approval)
         bt3_1 = ttk.Button(row3_cf, text="Применить фильтр", width=20,
-                         command=self._refresh)
+                         command=self._use_filter_and_refresh)
         bt3_2 = ttk.Button(row3_cf, text="Очистить фильтр", width=20,
                          command=self._clear_filters)
 
         # Pack row3_cf
-        c.pack(in_=row3_cf, side=tk.LEFT)
-        bt3_2.pack(side=tk.RIGHT, padx=10, pady=10)
-        bt3_1.pack(side=tk.RIGHT, padx=10, pady=10)
-        row3_cf.pack(side=tk.TOP, fill=tk.X)
+        bt3_0.pack(side=tk.LEFT, padx=10)
+        bt3_2.pack(side=tk.RIGHT, padx=10)
+        bt3_1.pack(side=tk.RIGHT, padx=10)
+        row3_cf.pack(side=tk.TOP, fill=tk.X, pady=10)
 
         if self.EXTENDED_MODE:
             # Fourth Frame (toggle select all rows, button to approve selected)
@@ -858,6 +879,14 @@ class PreviewForm(PaymentFrame):
         else:
             newlevel.geometry('+{}+{}'.format(start_x, start_y))
 
+    def _change_preview_state(self, new_state):
+        """ Change payments state that determines which payments will be shown.
+        """
+        if new_state == 'Show payments according to filters':
+            self.get_payments = self._get_all_payments
+        elif new_state == 'Show payments for approval':
+            self.get_payments = self._get_payments_for_approval
+
     def _clear_filters(self):
         self.initiator_box.set('Все')
         self.mvz_box.set('Все')
@@ -869,7 +898,6 @@ class PreviewForm(PaymentFrame):
         self.sumtotal_from.set('0,00')
         self.sumtotal_to.set('')
         self.nds.set(-1)
-        self.show_for_approve.set(0)
 
     def _create_from_current(self):
         """ Raises CreateForm with partially filled labels/entries. """
@@ -896,6 +924,33 @@ class PreviewForm(PaymentFrame):
                 'Экспорт в Excel',
                 'При экспорте произошла непредвиденная ошибка'
             )
+
+    def _get_all_payments(self):
+        """ Extract information from filters and get payments list. """
+        filters = {'initiator': self.initiatorsID[self.initiator_box.current()],
+                   'mvz': self.mvz[self.mvz_box.get()][0],
+                   'office': (self.office_box.current() and
+                              self.office[self.office_box.current()]),
+                   'date_type': self.date_type.current(),
+                   'date_m': self.date_entry_m.get_selected(),
+                   'date_y': self.year.get() if self.date_entry_y.get() else 0.,
+                   'sumtotal_from': float(self.sumtotal_from.get_float_form()
+                                          if self.sum_entry_from.get() else 0),
+                   'sumtotal_to': float(self.sumtotal_to.get_float_form()
+                                        if self.sum_entry_to.get() else 0),
+                   'nds':  self.nds.get(),
+                   'statusID': (self.status_box.current() and
+                              self.statusID[self.status_box.current()])
+                   }
+        if not filters['date_m']:
+            raise MonthFilterError(filters['date_m'])
+        self.rows = self.conn.get_paymentslist(user_info=self.user_info,
+                                               **filters)
+
+    def _get_payments_for_approval(self):
+        """ Get info about payments nedd to be approved. """
+        self.rows = self.conn.get_paymentslist(user_info=self.user_info,
+                                               for_approval=True)
 
     def _is_valid_approval(self, approvalID):
         """ Check if current user is approval person.
@@ -965,6 +1020,18 @@ class PreviewForm(PaymentFrame):
         newlevel.focus()
         newlevel.grab_set()
 
+    def _refresh(self):
+        """ Refresh information about payments. """
+        try:
+            self.get_payments()
+        except MonthFilterError as e:
+            messagebox.showerror(self.controller.title(), e.message)
+            return
+        self._show_rows(self.rows)
+        # Deselect "check_all_rows" checkbutton
+        if self.EXTENDED_MODE:
+            self.all_rows_checked.set(0)
+
     def _resize_columns(self):
         """ Resize columns in treeview. """
         self.table.column('#0', width=36)
@@ -997,35 +1064,6 @@ class PreviewForm(PaymentFrame):
         self.sum_label_to.pack(side=tk.RIGHT, padx=2)
         self.sum_entry_from.pack(side=tk.RIGHT)
         self.sum_label_from.pack(side=tk.RIGHT, padx=2)
-
-    def _refresh(self):
-        """ Extract information from filters. """
-        filters = {'initiator': self.initiatorsID[self.initiator_box.current()],
-                   'mvz': self.mvz[self.mvz_box.get()][0],
-                   'office': (self.office_box.current() and
-                              self.office[self.office_box.current()]),
-                   'date_type': self.date_type.current(),
-                   'date_m': self.date_entry_m.get_selected(),
-                   'date_y': self.year.get() if self.date_entry_y.get() else 0.,
-                   'sumtotal_from': float(self.sumtotal_from.get_float_form()
-                                          if self.sum_entry_from.get() else 0),
-                   'sumtotal_to': float(self.sumtotal_to.get_float_form()
-                                        if self.sum_entry_to.get() else 0),
-                   'nds':  self.nds.get(),
-                   'just_for_approval': self.show_for_approve.get(),
-                   'statusID': (self.status_box.current() and
-                              self.statusID[self.status_box.current()])
-                   }
-        if not filters['date_m']:
-            messagebox.showerror(
-                    self.controller.title(), 'Не выбран месяц'
-            )
-            return
-        self.rows = self.conn.get_paymentslist(self.user_info, **filters)
-        self._show_rows(self.rows)
-        # Deselect "check_all_rows" checkbutton
-        if self.EXTENDED_MODE:
-            self.all_rows_checked.set(0)
 
     def _show_about(self, event=None):
         """ Raise frame with info about app. """
@@ -1087,6 +1125,11 @@ class PreviewForm(PaymentFrame):
             self.sort_reversed_index = None if self.sort_reversed_index==sort_col else sort_col
             self._show_rows(self.rows)
 
+    def _show_payments_for_approval(self):
+        """ Change state to show payments for approval. """
+        self._change_preview_state('Show payments for approval')
+        self._refresh()
+
     def _show_rows(self, rows):
         """ Refresh table with new rows. """
         self.table.delete(*self.table.get_children())
@@ -1106,6 +1149,11 @@ class PreviewForm(PaymentFrame):
         else:
             for item in self.table.get_children():
                 self.table.uncheck_item(item)
+
+    def _use_filter_and_refresh(self):
+        """ Change state to filter usage. """
+        self._change_preview_state('Show payments according to filters')
+        self._refresh()
 
 
 class DetailedPreview(tk.Frame):

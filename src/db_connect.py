@@ -170,13 +170,12 @@ class DBConnect(object):
         return self.__cursor.fetchall()
 
     @monitor_network_state
-    def get_paymentslist(self, user_info, initiator, mvz, office,
-                         date_type, date_m, date_y, sumtotal_from, sumtotal_to,
-                         nds, just_for_approval, statusID):
-        """ Generates query according to user's acces type and filters.
+    def get_paymentslist(self, *, user_info, for_approval=None, initiator=None,
+                         mvz=None, office=None, date_type=None, date_m=None,
+                         date_y=None, sumtotal_from=None, sumtotal_to=None,
+                         nds=None, statusID=None):
+        """ Generates query according to user's access type and filters.
         """
-        # determine explicitly which date_type has been chosen
-        date_type = ('date_planed', 'date_created')[date_type]
         query = '''
         select pl.ID as ID, pl.UserID as InitiatorID,
            'ЛГ-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.RealID as varchar(7)) as Num,
@@ -203,12 +202,14 @@ class DBConnect(object):
         left join payment.People pappr on appr.UserID = pappr.UserID
         where 1=1
         '''
-        if just_for_approval:
+        if for_approval:
             if user_info.UserID == 24:
                 query += 'and pl.StatusID = 1 and appr.UserID in (9, 24)\n'
             else:
                 query += 'and pl.StatusID = 1 and appr.UserID = {}\n'.format(user_info.UserID)
         else:
+            # determine explicitly which date_type has been chosen
+            date_type = ('date_planed', 'date_created')[date_type]
             if not user_info.isSuperUser:
                 query += "and (pl.UserID = {0} or exists(select * from payment.PaymentsApproval _appr \
                         where pl.ID = _appr.PaymentID and _appr.UserID = {0}))\n".format(user_info.UserID)
