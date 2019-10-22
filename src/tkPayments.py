@@ -852,7 +852,7 @@ class PreviewForm(PaymentFrame):
             request = self.table.item(curRow).get('values')
             # extract all approvable requests for current user
             if self._is_valid_approval(request[-2]):
-                to_approve[request[0]] = float(request[-7].replace(' ', '')
+                to_approve[request[1]] = float(request[-7].replace(' ', '')
                                                           .replace(',', '.'))
         if not to_approve:
             return
