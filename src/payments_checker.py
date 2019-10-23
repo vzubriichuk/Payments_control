@@ -30,7 +30,7 @@ def update_files(main_path, path, directories, files):
             os.mkdir(os.path.join(relative_path, directory))
 
 def check_updates_and_run_app():
-    # Exctract names of all directories. Name of directory means version of app.
+    # Extract names of all directories. Name of directory means version of app.
     app_versions = next(os.walk(SOURCE))[1]
     # Function to convert folder names into versions ('1.2.13' -> (1, 2, 13))
     versioned = lambda x: tuple(map(int, x.split('.')))

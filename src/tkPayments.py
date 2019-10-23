@@ -50,6 +50,21 @@ class MonthFilterError(PaymentsError):
         super().__init__(self.expression, self.message)
 
 
+class NoRightsToFillCreateFormError(PaymentsError):
+    """ Exception raised when trying to fill CreateForm using data with
+    no rights to be used for creation.
+
+    Attributes:
+        expression - input expression in which the error occurred;
+        message - explanation of the error.
+    """
+    def __init__(self, expression,
+                 message='Нет прав для использования данного МВЗ/офиса'):
+        self.expression = expression
+        self.message = message
+        super().__init__(self.expression, self.message)
+
+
 class AccessError(tk.Tk):
     """ Raise an error when user doesn't have permission to work with app.
     """
@@ -292,6 +307,12 @@ class PaymentFrame(tk.Frame):
             return False
         return False
 
+    def get_mvzSAP(self, mvz):
+        return self.mvz[mvz][0]
+
+    def get_offices(self, mvz):
+        return self.mvz[mvz][1]
+
 
 class CreateForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info,
@@ -431,21 +452,6 @@ class CreateForm(PaymentFrame):
         self.limit_sum.configure(text=self._format_float(limit) + ' грн.')
         self.limit_sum.configure(fg=('black' if limit else 'red'))
 
-    def _restraint_by_mvz(self, event):
-        """ Shows mvz_sap that corresponds to chosen MVZ and restraint offices.
-            If 1 office is available, choose it, otherwise make box active.
-        """
-        # tcl language has no notion of None or a null value, so use '' instead
-        self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0] or '')
-        offices = self.mvz[self.mvz_current.get()][1]
-        if len(offices) == 1:
-            self.office_box.set(offices[0])
-            self.office_box.configure(state="disabled")
-        else:
-            self.office_box.set('')
-            self.office_box['values'] = offices
-            self.office_box.configure(state="readonly")
-
     def _clear(self):
         self.mvz_current.set('')
         self.mvz_sap.config(text='')
@@ -524,12 +530,27 @@ class CreateForm(PaymentFrame):
         """
         self._clear()
         self.mvz_current.set(mvz)
-        self.mvz_sap.config(text=self.mvz[self.mvz_current.get()][0] or '')
+        self.mvz_sap.config(text=self.get_mvzSAP(self.mvz_current.get()) or '')
         self.office_box.set(office)
         self.category_box.set(category)
         self.contragent_entry.insert(0, contragent)
         self.desc_text.insert('end', description.strip() if type(description) == str
                               else description)
+
+    def _restraint_by_mvz(self, event):
+        """ Shows mvz_sap that corresponds to chosen MVZ and restraint offices.
+            If 1 office is available, choose it, otherwise make box active.
+        """
+        # tcl language has no notion of None or a null value, so use '' instead
+        self.mvz_sap.config(text=self.get_mvzSAP(self.mvz_current.get()) or '')
+        offices = self.get_offices(self.mvz_current.get())
+        if len(offices) == 1:
+            self.office_box.set(offices[0])
+            self.office_box.configure(state="disabled")
+        else:
+            self.office_box.set('')
+            self.office_box['values'] = offices
+            self.office_box.configure(state="readonly")
 
     def _row1_pack(self):
         self.mvz_label.pack(side=tk.LEFT)
@@ -887,6 +908,14 @@ class PreviewForm(PaymentFrame):
         elif new_state == 'Show payments for approval':
             self.get_payments = self._get_payments_for_approval
 
+    def _check_rights_to_fill_CreateForm(self, to_fill):
+        try:
+            allowed_offices = self.get_offices(to_fill['МВЗ'])
+            if to_fill['Офис'] not in allowed_offices:
+                raise NoRightsToFillCreateFormError(to_fill['Офис'])
+        except KeyError:
+            raise NoRightsToFillCreateFormError(to_fill['МВЗ'])
+
     def _clear_filters(self):
         self.initiator_box.set('Все')
         self.mvz_box.set('Все')
@@ -906,6 +935,12 @@ class PreviewForm(PaymentFrame):
             # extract info to be putted in CreateForm
             to_fill = dict(zip(self.table["columns"],
                                self.table.item(curRow).get('values')))
+            try:
+                self._check_rights_to_fill_CreateForm(to_fill)
+            except NoRightsToFillCreateFormError as e:
+                messagebox.showerror(self.controller.title(),
+                                     e.message + '\n' + e.expression)
+                return
             self.controller._fill_CreateForm(**to_fill)
             self.controller._show_frame('CreateForm')
 
@@ -928,7 +963,7 @@ class PreviewForm(PaymentFrame):
     def _get_all_payments(self):
         """ Extract information from filters and get payments list. """
         filters = {'initiator': self.initiatorsID[self.initiator_box.current()],
-                   'mvz': self.mvz[self.mvz_box.get()][0],
+                   'mvz': self.get_mvzSAP(self.mvz_box.get()),
                    'office': (self.office_box.current() and
                               self.office[self.office_box.current()]),
                    'date_type': self.date_type.current(),
@@ -1416,12 +1451,12 @@ if __name__ == '__main__':
     from collections import namedtuple
 
     UserInfo = namedtuple('UserInfo', ['UserID', 'ShortUserName',
-                                       'AccessType', 'isSuperUser'])
+                                       'AccessType', 'isSuperUser', 'GroupID'])
 
     with DBConnect(server='s-kv-center-s59', db='LogisticFinance') as sql:
         try:
             app = PaymentApp(connection=sql,
-                             user_info=UserInfo(24, 'TestName', 1, 1),
+                             user_info=UserInfo(24, 'TestName', 1, 1, 1),
                              mvz=[('20511RC191', '20511RC191', 'Офис'),
                                   ('40900A2595', '40900A2595', 'Офис')],
                              categories=[('Cat1', 1), ('Cat2', 2)],

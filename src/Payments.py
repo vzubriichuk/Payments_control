@@ -25,8 +25,10 @@ def main():
                 tkp.AccessError()
                 sys.exit()
 
-            UserInfo = namedtuple('UserInfo', ['UserID', 'ShortUserName',
-                                               'AccessType', 'isSuperUser'])
+            UserInfo = namedtuple('UserInfo',
+                ['UserID', 'ShortUserName', 'AccessType', 'isSuperUser',
+                 'GroupID']
+            )
 
             # load references
             user_info = UserInfo(*sql.get_user_info())
