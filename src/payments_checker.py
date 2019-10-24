@@ -29,11 +29,17 @@ def update_files(main_path, path, directories, files):
         for directory in directories:
             os.mkdir(os.path.join(relative_path, directory))
 
+def versioned(fname):
+    """ Function to convert folder name into version ('1.2.13' -> (1, 2, 13)).
+    """
+    try:
+        return tuple(map(int, fname.split('.')))
+    except ValueError:
+        return (0,)
+
 def check_updates_and_run_app():
     # Exctract names of all directories. Name of directory means version of app.
     app_versions = next(os.walk(SOURCE))[1]
-    # Function to convert folder names into versions ('1.2.13' -> (1, 2, 13))
-    versioned = lambda x: tuple(map(int, x.split('.')))
     # Determine current version of application
     try:
         with open('payments.inf', 'r') as f:
