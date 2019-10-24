@@ -4,7 +4,7 @@ Created on Fri Jul 12 15:03:05 2019
 
 @author: v.shkaberda
 """
-from _version import upd_path, version_info
+from _version import upd_path
 from contextlib import suppress
 from log_error import writelog
 from singleinstance import Singleinstance
@@ -34,6 +34,13 @@ def check_updates_and_run_app():
     app_versions = next(os.walk(SOURCE))[1]
     # Function to convert folder names into versions ('1.2.13' -> (1, 2, 13))
     versioned = lambda x: tuple(map(int, x.split('.')))
+    # Determine current version of application
+    try:
+        with open('payments.inf', 'r') as f:
+            version_info = f.readline()
+            version_info = versioned(version_info)
+    except FileNotFoundError:
+        from _version import version_info
     # Check all new versions and sort in descending order
     new_versions = sorted((x for x in app_versions if versioned(x) > version_info),
                           key=versioned,
@@ -43,6 +50,10 @@ def check_updates_and_run_app():
         #recursive_update(*next(os.walk(path)))
         for data in os.walk(path):
             update_files(path, *data)
+    # Update version in payments.inf
+    if new_versions:
+        with open('payments.inf', 'w') as f:
+            f.write(new_versions[0])
     # Run main executable
     os.startfile("payments.exe")
     sleep(5)
