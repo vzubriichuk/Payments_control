@@ -38,7 +38,7 @@ def versioned(fname):
         return (0,)
 
 def check_updates_and_run_app():
-    # Exctract names of all directories. Name of directory means version of app.
+    # Extract names of all directories. Name of directory means version of app.
     app_versions = next(os.walk(SOURCE))[1]
     # Determine current version of application
     try:

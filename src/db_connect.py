@@ -88,9 +88,12 @@ class DBConnect(object):
     def get_user_info(self):
         """ Returns information about current user based on ORIGINAL_LOGIN().
         """
-        self.__cursor.execute("select UserID, ShortUserName, AccessType, isSuperUser \
-          from payment.People \
-          where UserLogin = right(ORIGINAL_LOGIN(), len(ORIGINAL_LOGIN()) - charindex( '\\' , ORIGINAL_LOGIN()))")
+        query = '''
+        select UserID, ShortUserName, AccessType, isSuperUser, GroupID
+        from payment.People
+        where UserLogin = right(ORIGINAL_LOGIN(), len(ORIGINAL_LOGIN()) - charindex( '\\' , ORIGINAL_LOGIN()))
+        '''
+        self.__cursor.execute(query)
         return self.__cursor.fetchone()
 
     @monitor_network_state
@@ -211,8 +214,15 @@ class DBConnect(object):
             # determine explicitly which date_type has been chosen
             date_type = ('date_planed', 'date_created')[date_type]
             if not user_info.isSuperUser:
-                query += "and (pl.UserID = {0} or exists(select * from payment.PaymentsApproval _appr \
-                        where pl.ID = _appr.PaymentID and _appr.UserID = {0}))\n".format(user_info.UserID)
+                if user_info.GroupID:
+                    query += ("and (pl.UserID in (select UserID\n\
+                              from payment.people pg where pg.GroupID = {})\n"
+                              .format(user_info.GroupID))
+                else:
+                    query += "and (pl.UserID = {}\n".format(user_info.UserID)
+                query += ("or exists(select * from payment.PaymentsApproval _appr \
+                        where pl.ID = _appr.PaymentID and _appr.UserID = {}))\n"
+                                     .format(user_info.UserID))
             if initiator:
                 query += "and pl.UserID = {}\n".format(initiator)
             if mvz:
