@@ -11,11 +11,13 @@ from singleinstance import Singleinstance
 from splash_screen import SplashScreen
 from time import sleep
 from tkinter import Label, PhotoImage
+from tkPayments import NetworkError, UnexpectedError
 from shutil import copy2
 import os, sys, zlib
 
 SOURCE = zlib.decompress(upd_path).decode()
 ALREADY_UPDATED = []
+
 
 def update_files(main_path, path, directories, files):
     # specify path in current working directory
@@ -29,6 +31,7 @@ def update_files(main_path, path, directories, files):
         for directory in directories:
             os.mkdir(os.path.join(relative_path, directory))
 
+
 def versioned(fname):
     """ Function to convert folder name into version ('1.2.13' -> (1, 2, 13)).
     """
@@ -36,6 +39,7 @@ def versioned(fname):
         return tuple(map(int, fname.split('.')))
     except ValueError:
         return (0,)
+
 
 def check_updates_and_run_app():
     # Extract names of all directories. Name of directory means version of app.
@@ -53,7 +57,6 @@ def check_updates_and_run_app():
                           reverse=True)
     for v in new_versions:
         path = os.path.join(SOURCE, v)
-        #recursive_update(*next(os.walk(path)))
         for data in os.walk(path):
             update_files(path, *data)
     # Update version in payments.inf
@@ -64,18 +67,20 @@ def check_updates_and_run_app():
     os.startfile("payments.exe")
     sleep(5)
 
+
 def main():
     # Create splash screen
-    root = SplashScreen(check_updates_and_run_app)
+    exception_handlers = {'NetworkError': NetworkError,
+                          'UnexpectedError': UnexpectedError}
+    root = SplashScreen(func=check_updates_and_run_app,
+                        exception_handlers=exception_handlers)
     root.overrideredirect(True)
 
     logo = PhotoImage(file='resources/payment.png')
     logo_label = Label(root, image=logo)
     logo_label.pack(side='top', pady=40)
 
-    copyright_label = Label(root,
-                     text='© 2019 Офис контроллинга логистики'
-                     )
+    copyright_label = Label(root, text='© 2019 Офис контроллинга логистики')
     copyright_label.pack(side='bottom', pady=5)
 
     label = Label(root,
@@ -84,6 +89,7 @@ def main():
 
     root.after(300, root.task)
     root.mainloop()
+
 
 if __name__ == '__main__':
     try:

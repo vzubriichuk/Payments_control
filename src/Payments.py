@@ -13,7 +13,7 @@ from singleinstance import Singleinstance
 import os, sys
 import tkPayments as tkp
 
-UPDATER_VERSION = '0.9.19a'
+UPDATER_VERSION = '0.9.20a'
 
 
 class RestartRequiredError(Exception):

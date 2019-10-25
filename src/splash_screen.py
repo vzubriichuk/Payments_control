@@ -7,6 +7,7 @@ Created on Tue Aug 20 17:56:36 2019
 import tkinter as tk
 from time import sleep
 
+
 class SplashScreen(tk.Tk):
     ''' Class that inherits from tkinter.Tk and allows create background
         splash screen while running python script.
@@ -17,9 +18,10 @@ class SplashScreen(tk.Tk):
         root.after(200, root.task) # give tkinter time to render the window
         root.mainloop()
     '''
-    def __init__(self, func=None, *args, **kwargs):
+    def __init__(self, func=None, exception_handlers=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.func = func
+        self.func = func or (lambda: sleep(7))  # simulate computation
+        self.exception_handlers = exception_handlers
         self._center_window(400, 400)
 
     def _center_window(self, w, h):
@@ -32,11 +34,16 @@ class SplashScreen(tk.Tk):
     def task(self):
         ''' The window will stay open until this function call ends.
         '''
-        if not self.func:
-            sleep(7) # simulate computation
-        else:
+        try:
             self.func()
-        self.destroy()
+        except StopIteration:
+            if 'NetworkError' in self.exception_handlers:
+                self.exception_handlers['NetworkError']()
+        except Exception as e:
+            if 'UnexpectedError' in self.exception_handlers:
+                self.exception_handlers['UnexpectedError'](type(e), e.args)
+        finally:
+            self.destroy()
 
 
 def main():
@@ -44,7 +51,7 @@ def main():
     root.overrideredirect(True)
 
     label = tk.Label(root,
-                     text='Выполняется поиск обновлений и запуск приложения...')
+                     text='Выполняется поиск обновлений и запуск приложения.')
     label.pack(expand='yes')
 
     root.after(200, root.task)

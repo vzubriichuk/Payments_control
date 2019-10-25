@@ -119,6 +119,19 @@ class RestartRequiredAfterUpdateError(tk.Tk):
         self.destroy()
 
 
+class UnexpectedError(tk.Tk):
+    """ Raise a message when an unexpected exception occurs.
+    """
+    def __init__(self, *args):
+        super().__init__()
+        self.withdraw()  # Do not show main window
+        messagebox.showinfo(
+                'Непредвиденное исключение',
+                'Возникло непредвиденное исключение\n' + '\n'.join(map(str, args))
+        )
+        self.destroy()
+
+
 class StringSumVar(tk.StringVar):
     """ Contains function that returns var formatted in a such way, that
         it can be converted into a float without an error.
