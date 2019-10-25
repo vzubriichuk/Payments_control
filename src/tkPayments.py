@@ -91,6 +91,19 @@ class NetworkError(tk.Tk):
         self.destroy()
 
 
+class RestartRequiredAfterUpdateError(tk.Tk):
+    """ Raise a message about restart needed after update.
+    """
+    def __init__(self):
+        super().__init__()
+        self.withdraw()  # Do not show main window
+        messagebox.showinfo(
+                'Необходима перезагрузка',
+                'Выполнено критическое обновление.\nПерезапустите приложение'
+        )
+        self.destroy()
+
+
 class StringSumVar(tk.StringVar):
     """ Contains function that returns var formatted in a such way, that
         it can be converted into a float without an error.

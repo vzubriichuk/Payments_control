@@ -82,7 +82,7 @@ def main():
                   text='Выполняется поиск обновлений и запуск приложения...')
     label.pack(expand='yes')
 
-    root.after(200, root.task)
+    root.after(300, root.task)
     root.mainloop()
 
 if __name__ == '__main__':
