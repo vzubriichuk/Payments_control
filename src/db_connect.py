@@ -52,7 +52,7 @@ class DBConnect(object):
         self.__cursor.execute("exec [payment].[Access_Check]")
         access = self.__cursor.fetchone()
         # check AccessType and isSuperUser
-        if access and (access[0] in (1, 2) or access[1]):
+        if access and (access[0] in (1, 2, 3) or access[1]):
             return True
 
     @monitor_network_state
