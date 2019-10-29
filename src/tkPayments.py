@@ -1306,11 +1306,9 @@ class DetailedPreview(tk.Frame):
 
         numberOfLines = []       # List to store number of lines needed
         columnWidths = [20, 50]  # Width of the different columns in the table
-        stringLength = []        # Length of the strings in the info2Add list
 
         # Find the length and the number of lines of each element and column
         for index, item in enumerate(info):
-            stringLength.append(len(str(item)))
             numberOfLines.append(1 + str(item).count('\n') +
                 sum(floor(len(s)/columnWidths[index]) for s in str(item).split('\n'))
             )
