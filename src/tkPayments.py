@@ -1075,6 +1075,7 @@ class PreviewForm(PaymentFrame):
         newlevel = tk.Toplevel(self.parent)
         newlevel.transient(self)  # disable minimize/maximize buttons
         newlevel.title(title)
+        newlevel.bind('<Escape>', lambda e, w=newlevel: w.destroy())
         frame(newlevel, *options)
         newlevel.resizable(width=False, height=False)
         self._center_popup_window(newlevel, width, height, static_geometry)
@@ -1147,6 +1148,7 @@ class PreviewForm(PaymentFrame):
                 newlevel.transient(self)  # disable minimize/maximize buttons
                 newlevel.title('Заявка детально')
                 newlevel.iconbitmap('resources/preview.ico')
+                newlevel.bind('<Escape>', lambda e, w=newlevel: w.destroy())
                 approvalID = self.table.item(curRow).get('values')[-2]
                 is_valid_approval = self._is_valid_approval(approvalID)
                 if is_valid_approval:
