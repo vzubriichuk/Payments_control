@@ -14,7 +14,7 @@ from multiselect import MultiselectMenu
 from tkcalendar import DateEntry
 from tkinter import ttk, messagebox
 from tkHyperlinkManager import HyperlinkManager
-from math import ceil
+from math import floor
 from xl import export_to_excel
 import locale
 import os, zlib
@@ -520,7 +520,7 @@ class CreateForm(PaymentFrame):
         request = {'mvz': self.mvz_sap.cget('text') or None,
                    'office': self.office_box.get(),
                    'categoryID': self.categories[self.category_box.get()],
-                   'contragent': self.contragent_entry.get() or None,
+                   'contragent': self.contragent_entry.get().strip() or None,
                    'csp': self.csp_entry.get() or None,
                    'plan_date': self._convert_date(self.plan_date_entry.get()),
                    'sumtotal': sumtotal,
@@ -1298,14 +1298,12 @@ class DetailedPreview(tk.Frame):
         columnWidths = [20, 50]  # Width of the different columns in the table
         stringLength = []        # Length of the strings in the info2Add list
 
-        # Find the length of each element in the info2Add list
-        for item in info:
+        # Find the length and the number of lines of each element and column
+        for index, item in enumerate(info):
             stringLength.append(len(str(item)))
-            numberOfLines.append(str(item).count('\n'))
-
-        # Find the number of lines needed for each column
-        for index, item in enumerate(stringLength):
-            numberOfLines[index] += (ceil(item/columnWidths[index]))
+            numberOfLines.append(1 + str(item).count('\n') +
+                sum(floor(len(s)/columnWidths[index]) for s in str(item).split('\n'))
+            )
 
         # Find the maximum number of lines needed
         lineNumber = max(numberOfLines)
