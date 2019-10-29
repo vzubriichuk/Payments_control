@@ -1313,8 +1313,12 @@ class DetailedPreview(tk.Frame):
             col = tk.Text(frame, bg='white', padx=3)
             col.insert(1.0, cell)
             col.grid(row=rowNumber, column=col_num+1, sticky='news')
-            col.configure(width=columnWidths[col_num], height=lineNumber,
+            col.configure(width=columnWidths[col_num], height=min(9, lineNumber),
                           font=fonts[col_num], state="disabled")
+            if lineNumber > 9 and col_num == 1:
+                scrollbar = tk.Scrollbar(frame, command=col.yview)
+                scrollbar.grid(row=rowNumber, column=col_num+2, sticky='nsew')
+                col['yscrollcommand'] = scrollbar.set
 
         for col_num, cell in enumerate(info):
             form_column(rowNumber, lineNumber, col_num, cell, fonts)
