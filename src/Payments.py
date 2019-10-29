@@ -102,6 +102,8 @@ def main():
                         sql.get_approvals_for_first_stage(),
                     'status_list': sql.get_status_list()
                     }
+            for k, v in refs.items():
+                assert v is not None, 'refs[' + k + '] value is None'
             # Run app
             app = tkp.PaymentApp(**refs)
             app.mainloop()

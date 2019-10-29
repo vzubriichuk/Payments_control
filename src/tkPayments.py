@@ -835,6 +835,14 @@ class PreviewForm(PaymentFrame):
         self._init_table(preview_cf)
         self.table.pack(expand=tk.YES, fill=tk.BOTH)
 
+        # asserts for headings used through script as indices
+        head = self.table["columns"]
+        msg = 'Heading order must be reviewed. Wrong heading: '
+        assert head[1] == 'ID', '{}ID'.format(msg)
+        assert head[-2] == 'ID Утверждающего', '{}ID Утверждающего'.format(msg)
+        assert head[-5] == 'Статус', '{}Статус'.format(msg)
+        assert head[-7] == 'Сумма с НДС', '{}Сумма с НДС'.format(msg)
+
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
         # Show create buttons only for users with rights
@@ -1064,12 +1072,12 @@ class PreviewForm(PaymentFrame):
                         static_geometry=True, options=()):
         """ Create and raise new frame with limits.
         Input:
-        frame - class, Frame class to be drew in Toplevel;
+        frame - class, Frame class to be drawn in Toplevel;
         title - str, window title;
         width - int, width parameter to center window;
         height - int, height parameter to center window;
         static_geometry - bool, if True - width and height will determine size
-            of window, otherwise size will be determined  dynamically;
+            of window, otherwise size will be determined dynamically;
         options - tuple, arguments that will be sent to frame.
         """
         newlevel = tk.Toplevel(self.parent)
