@@ -860,7 +860,7 @@ class PreviewForm(PaymentFrame):
                          command=self._export_to_excel)
         bt4.pack(side=tk.RIGHT, padx=10, pady=10)
 
-        if self.userID in (6, 9, 24, 76):
+        if self.userID in (6, 24, 42, 76):
             bt4a = ttk.Button(bottom_cf, text="Изменить лимиты", width=20,
                 command=self._alter_limits)
             bt4a.pack(side=tk.RIGHT, padx=10, pady=10)
