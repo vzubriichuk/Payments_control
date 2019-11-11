@@ -780,17 +780,20 @@ class PreviewForm(PaymentFrame):
         # Third Fill Frame (checkbox + button to apply filter)
         row3_cf = tk.Frame(filterframe, name='row3_cf', padx=15)
 
-        bt3_0 = ttk.Button(row3_cf, text="Показать все заявки на утверждение",
+        self.search_by_num = tk.StringVar()
+        self.search_by_num_label = tk.Label(row3_cf, text='Поиск по номеру заявки')
+        self.search_by_num_entry = tk.Entry(row3_cf, width=20,
+                                            textvariable=self.search_by_num)
+
+        self.bt3_0 = ttk.Button(row3_cf, text="Показать все заявки на утверждение",
                            width=40, command=self._show_payments_for_approval)
-        bt3_1 = ttk.Button(row3_cf, text="Применить фильтр", width=20,
+        self.bt3_1 = ttk.Button(row3_cf, text="Применить фильтр", width=20,
                          command=self._use_filter_and_refresh)
-        bt3_2 = ttk.Button(row3_cf, text="Очистить фильтр", width=20,
+        self.bt3_2 = ttk.Button(row3_cf, text="Очистить фильтр", width=20,
                          command=self._clear_filters)
 
         # Pack row3_cf
-        bt3_0.pack(side=tk.LEFT, padx=10)
-        bt3_2.pack(side=tk.RIGHT, padx=10)
-        bt3_1.pack(side=tk.RIGHT, padx=10)
+        self._row3_pack()
         row3_cf.pack(side=tk.TOP, fill=tk.X, pady=10)
 
         if self.EXTENDED_MODE:
@@ -961,6 +964,7 @@ class PreviewForm(PaymentFrame):
         self.sumtotal_from.set('0,00')
         self.sumtotal_to.set('')
         self.nds.set(-1)
+        self.search_by_num.set('')
 
     def _create_from_current(self):
         """ Raises CreateForm with partially filled labels/entries. """
@@ -1009,7 +1013,8 @@ class PreviewForm(PaymentFrame):
                                         if self.sum_entry_to.get() else 0),
                    'nds':  self.nds.get(),
                    'statusID': (self.status_box.current() and
-                              self.statusID[self.status_box.current()])
+                              self.statusID[self.status_box.current()]),
+                   'payment_num': self.search_by_num.get().strip()
                    }
         if not filters['date_m']:
             raise MonthFilterError(filters['date_m'])
@@ -1134,6 +1139,13 @@ class PreviewForm(PaymentFrame):
         self.sum_label_to.pack(side=tk.RIGHT, padx=2)
         self.sum_entry_from.pack(side=tk.RIGHT)
         self.sum_label_from.pack(side=tk.RIGHT, padx=2)
+
+    def _row3_pack(self):
+        self.bt3_0.pack(side=tk.LEFT, padx=10)
+        self.bt3_2.pack(side=tk.RIGHT, padx=10)
+        self.bt3_1.pack(side=tk.RIGHT, padx=10)
+        self.search_by_num_entry.pack(side=tk.RIGHT, padx=10)
+        self.search_by_num_label.pack(side=tk.RIGHT, padx=10)
 
     def _show_about(self, event=None):
         """ Raise frame with info about app. """
@@ -1309,6 +1321,7 @@ class DetailedPreview(tk.Frame):
 
         # Find the length and the number of lines of each element and column
         for index, item in enumerate(info):
+            # minimum 1 line + number of new lines + lines that too long
             numberOfLines.append(1 + str(item).count('\n') +
                 sum(floor(len(s)/columnWidths[index]) for s in str(item).split('\n'))
             )

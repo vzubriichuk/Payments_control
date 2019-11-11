@@ -176,7 +176,7 @@ class DBConnect(object):
     def get_paymentslist(self, *, user_info, for_approval=None, initiator=None,
                          mvz=None, office=None, date_type=None, date_m=None,
                          date_y=None, sumtotal_from=None, sumtotal_to=None,
-                         nds=None, statusID=None):
+                         nds=None, statusID=None, payment_num=None):
         """ Generates query according to user's access type and filters.
         """
         query = '''
@@ -223,24 +223,28 @@ class DBConnect(object):
                 query += ("or exists(select * from payment.PaymentsApproval _appr \
                         where pl.ID = _appr.PaymentID and _appr.UserID = {}))\n"
                                      .format(user_info.UserID))
-            if initiator:
-                query += "and pl.UserID = {}\n".format(initiator)
-            if mvz:
-                query += "and obj.MVZsap = '{}'\n".format(mvz)
-            if office:
-                query += "and obj.ServiceName = '{}'\n".format(office)
-            if date_y and all(map(str.isdigit, str(date_y))):
-                query += "and year({}) = {}\n".format(date_type, date_y)
-            if date_m:
-                query += "and month({}) in ({})\n".format(date_type, date_m)
-            if sumtotal_from:
-                query += "and SumNoTax >= {}\n".format(sumtotal_from)
-            if sumtotal_to:
-                query += "and SumNoTax <= {}\n".format(sumtotal_to)
-            if not nds == -1:
-                query += "and Tax = {}\n".format(nds)
-            if statusID:
-                query += "and pl.StatusID = {}\n".format(statusID)
+            if payment_num:
+                query += "and replace(convert(varchar, date_created, 102),'.','') + \
+                '_' + cast(pl.RealID as varchar(7)) = '{}'\n".format(payment_num[3:])
+            else:
+                if initiator:
+                    query += "and pl.UserID = {}\n".format(initiator)
+                if mvz:
+                    query += "and obj.MVZsap = '{}'\n".format(mvz)
+                if office:
+                    query += "and obj.ServiceName = '{}'\n".format(office)
+                if date_y and all(map(str.isdigit, str(date_y))):
+                    query += "and year({}) = {}\n".format(date_type, date_y)
+                if date_m:
+                    query += "and month({}) in ({})\n".format(date_type, date_m)
+                if sumtotal_from:
+                    query += "and SumNoTax >= {}\n".format(sumtotal_from)
+                if sumtotal_to:
+                    query += "and SumNoTax <= {}\n".format(sumtotal_to)
+                if not nds == -1:
+                    query += "and Tax = {}\n".format(nds)
+                if statusID:
+                    query += "and pl.StatusID = {}\n".format(statusID)
         # specific sorting for several people
         if user_info.UserID in (42, 81, 75):
             query += "order by IIF(pl.StatusID in (2, 4), 2, 1) ASC, ID DESC"
