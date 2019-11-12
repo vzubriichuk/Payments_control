@@ -56,6 +56,24 @@ class DBConnect(object):
             return True
 
     @monitor_network_state
+    def alter_payment(self, userID, paymentID, date_planed, SumNoTax):
+        """ Alter payment and log changes on server.
+        """
+        query = '''
+        exec payment.alter_payment @UserID = ?,
+                                   @PaymentID = ?,
+                                   @date_planed = ?,
+                                   @SumNoTax = ?
+        '''
+
+        try:
+            self.__cursor.execute(query, userID, paymentID, date_planed, SumNoTax)
+            self.__db.commit()
+            return 1
+        except pyodbc.ProgrammingError:
+            return 0
+
+    @monitor_network_state
     def create_request(self, userID, mvz, office, categoryID, contragent, csp,
                        plan_date, sumtotal, nds, text, approval, is_cashless):
         """ Executes procedure that creates new request.
@@ -130,6 +148,14 @@ class DBConnect(object):
         """
         query = "exec payment.get_categories @isSuperUser = ?"
         self.__cursor.execute(query, user_info.isSuperUser)
+        return self.__cursor.fetchall()
+
+    @monitor_network_state
+    def get_info_to_alter_payment(self, paymentID):
+        """ Returns info about request is intended to be altered.
+        """
+        query = "exec payment.get_info_to_alter_payment @PaymentID = ?"
+        self.__cursor.execute(query, paymentID)
         return self.__cursor.fetchall()
 
     @monitor_network_state

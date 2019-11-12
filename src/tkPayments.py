@@ -37,6 +37,19 @@ class PaymentsError(Exception):
     pass
 
 
+class IncorrectFloatError(PaymentsError):
+    """ Exception raised if sum is not converted to float.
+
+    Attributes:
+        expression - input expression in which the error occurred;
+        message - explanation of the error.
+    """
+    def __init__(self, expression, message='Введена некорректная сумма'):
+        self.expression = expression
+        self.message = message
+        super().__init__(self.expression, self.message)
+
+
 class MonthFilterError(PaymentsError):
     """ Exception raised if month don't chosen in filter.
 
@@ -45,6 +58,19 @@ class MonthFilterError(PaymentsError):
         message - explanation of the error.
     """
     def __init__(self, expression, message='Не выбран месяц'):
+        self.expression = expression
+        self.message = message
+        super().__init__(self.expression, self.message)
+
+
+class MonthChangedError(PaymentsError):
+    """ Exception raised if month is changed when altering payment.
+
+    Attributes:
+        expression - input expression in which the error occurred;
+        message - explanation of the error.
+    """
+    def __init__(self, expression, message='Запрещено менять месяц'):
         self.expression = expression
         self.message = message
         super().__init__(self.expression, self.message)
@@ -60,6 +86,32 @@ class NoRightsToFillCreateFormError(PaymentsError):
     """
     def __init__(self, expression,
                  message='Нет прав для использования данного МВЗ/офиса'):
+        self.expression = expression
+        self.message = message
+        super().__init__(self.expression, self.message)
+
+
+class PeriodExceededError(PaymentsError):
+    """ Exception raised if period is exceeded when altering payment.
+
+    Attributes:
+        expression - input expression in which the error occurred;
+        message - explanation of the error.
+    """
+    def __init__(self, expression, message='Превышен допустимый период'):
+        self.expression = expression
+        self.message = message
+        super().__init__(self.expression, self.message)
+
+
+class SumExceededError(PaymentsError):
+    """ Exception raised if sum is exceeded when altering payment.
+
+    Attributes:
+        expression - input expression in which the error occurred;
+        message - explanation of the error.
+    """
+    def __init__(self, expression, message='Превышена первичная сумма'):
         self.expression = expression
         self.message = message
         super().__init__(self.expression, self.message)
@@ -859,6 +911,11 @@ class PreviewForm(PaymentFrame):
                              command=self._create_from_current)
             bt2.pack(side=tk.LEFT, padx=10, pady=10)
 
+        if self.user_info.UserID in (42, 76):
+            bt3 = ttk.Button(bottom_cf, text="Изменить заявку", width=20,
+                             command=self._alter_request)
+            bt3.pack(side=tk.LEFT, padx=10, pady=10)
+
         bt6 = ttk.Button(bottom_cf, text="Выход", width=10,
                          command=controller._quit)
         bt6.pack(side=tk.RIGHT, padx=10, pady=10)
@@ -896,6 +953,24 @@ class PreviewForm(PaymentFrame):
         self._raise_Toplevel(frame=AlterLimits, title='Изменение лимитов',
                              width=400, height=300, static_geometry=False,
                              options=(self.conn,))
+
+    def _alter_request(self):
+        """ Create and raise new frame to alter chosen payment. """
+        curRow = self.table.focus()
+        if curRow:
+            request = dict(zip(self.table["columns"],
+                               self.table.item(curRow).get('values')))
+            request_info = self.conn.get_info_to_alter_payment(request['ID'])
+            if not request_info:
+                messagebox.showinfo(
+                        'Изменение заявки',
+                        'Изменять можно только утверждённые заявки.'
+                )
+                return
+            self._raise_Toplevel(frame=AlterRequest, title='Изменение заявки',
+                                 width=200, height=180, static_geometry=False,
+                                 options=(self, self.conn, self.userID,
+                                          request_info[0]))
 
     def  _approve_multiple(self):
         """ Allows to approve multiple requests chosen in PreviewForm.
@@ -1493,6 +1568,114 @@ class AlterLimits(tk.Frame):
             messagebox.showerror(
                     messagetitle, 'Произошла непредвиденная ошибка'
             )
+
+
+class AlterRequest(tk.Frame):
+    """ Creates a frame to alter chosen request. """
+    def __init__(self, parent, parentform, conn, userID, request_info):
+        super().__init__(parent)
+        self.parent = parent
+        self.parentform = parentform
+        self.conn = conn
+        self.userID = userID
+        self.paymentID, self.request_date_str, self.request_sum = request_info
+        self.request_date = datetime.strptime(self.request_date_str,
+                                              '%Y-%m-%d').date()
+
+        # Top Frame with table
+        self.top = tk.Frame(self, name='top_ar')
+        self.top_label = tk.Label(self.top,
+            text='Измените необходимое поле:', font=('Arial', 10, 'bold'))
+
+        self.altdata_head_label = tk.Label(self.top,
+            text='Изменение даты', font=('Arial', 9, 'bold'), padx=10)
+        self.altdata_label = tk.Label(self.top,
+            text=('Укажите новую дату +/- 7 дней в пределах месяца. '
+                  'Первичная дата:'),
+            font=('Arial', 9), padx=10)
+        self.plan_date = tk.StringVar()
+        self.plan_date_entry = DateEntry(self.top, width=12, state='readonly',
+                                         textvariable=self.plan_date, font=('Arial', 9),
+                                         selectmode='day', borderwidth=2)
+        self.plan_date_entry.set_date(self.request_date)
+
+        self.altsum_head_label = tk.Label(self.top,
+            text='Изменение суммы', font=('Arial', 9, 'bold'), padx=10)
+        self.altsum_label = tk.Label(self.top,
+            text='Укажите сумму без НДС. Первичная сумма:',
+            font=('Arial', 9), padx=10)
+        self.sumtotal = StringSumVar()
+        self.altsum_entry = tk.Entry(self.top, width=12, textvariable=self.sumtotal)
+        self.sumtotal.set(self.request_sum)
+
+        # Bottom Frame with buttons
+        self.bottom = tk.Frame(self, name='bottom_ar')
+
+        bt2 = ttk.Button(self.bottom, text="Отменить", width=10,
+                         style='ButtonRed.TButton',
+                         command=self.parent.destroy)
+        bt2.pack(side=tk.RIGHT, padx=15, pady=5)
+
+        bt1 = ttk.Button(self.bottom, text="Сохранить", width=10,
+                         style='ButtonGreen.TButton',
+                         command=self._apply_changes)
+        bt1.pack(side=tk.LEFT, padx=15, pady=5)
+        self._pack_frames()
+
+    def _apply_changes(self):
+        try:
+            self._validate_changes()
+        except (IncorrectFloatError, PeriodExceededError,
+                MonthChangedError, SumExceededError) as e:
+            messagebox.showerror(self.parent.title(),
+                                 e.message + '\n' + e.expression)
+            return
+        new_date = self.plan_date_entry.get_date()
+        # convert to datetime for SQL
+        new_date = datetime.combine(new_date, datetime.min.time())
+        new_sum = round(float(self.sumtotal.get_float_form()), 2)
+        result = self.conn.alter_payment(self.userID, self.paymentID,
+                                         new_date, new_sum)
+        if not result:
+            messagebox.showerror(self.parent.title(),
+                                 'Произошла ошибка при выполении запроса')
+        else:
+            messagebox.showinfo(self.parent.title(), 'Запрос выполнен')
+            self.parentform._refresh()
+            self.parent.destroy()
+
+    def _pack_frames(self):
+        self.top_label.pack(side=tk.TOP)
+        self.altdata_head_label.pack(side=tk.TOP)
+        self.altdata_label.pack(side=tk.TOP)
+        self.plan_date_entry.pack(side=tk.TOP, pady=5)
+        self.altsum_head_label.pack(side=tk.TOP)
+        self.altsum_label.pack(side=tk.TOP)
+        self.altsum_entry.pack(side=tk.TOP)
+        self.top.pack(side=tk.TOP, fill=tk.X, expand=False, padx=4, pady=2)
+        self.bottom.pack(side=tk.BOTTOM, fill=tk.X, expand=False)
+        self.pack()
+
+    def _validate_changes(self):
+        new_date = self.plan_date_entry.get_date()
+        # Input check
+        try:
+            new_sum = float(self.sumtotal.get_float_form())
+        except ValueError:
+            raise IncorrectFloatError(self.sumtotal.get())
+        date_diff = (self.request_date - new_date)
+        # check if period is not exceeded
+        if abs(date_diff.days) > 7:
+            raise PeriodExceededError(str((date_diff.days,
+                                          self.request_date,
+                                          new_date))
+                )
+        # check if month is the same
+        if self.request_date.month != new_date.month:
+            raise MonthChangedError(str(self.request_date))
+        # check if sum is not exceeded
+        if new_sum > self.request_sum:
+            raise SumExceededError(str(self.request_sum))
 
 
 if __name__ == '__main__':
