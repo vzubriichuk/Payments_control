@@ -449,7 +449,8 @@ class CreateForm(PaymentFrame):
         self.plan_date.trace("w", self._check_limit)
         self.plan_date_entry = DateEntry(row3_cf, width=12, state='readonly',
                                          textvariable=self.plan_date, font=('Arial', 9),
-                                         selectmode='day', borderwidth=2)
+                                         selectmode='day', borderwidth=2,
+                                         locale='ru_RU')
         self.sum_label = tk.Label(row3_cf, text='Сумма без НДС, грн')
         self.sumtotal = StringSumVar()
         self.sumtotal.set('0,00')
@@ -549,9 +550,10 @@ class CreateForm(PaymentFrame):
         """ Take date and convert it into output format.
             If output is None datetime object is returned.
 
-            date: str in format '%d.%m.%y' or '%d.%m.%Y'.
+            date: str in format '%d[./]%m[./]%y' or '%d[./]%m[./]%Y'.
             output: str or None, output format.
         """
+        date = date.replace('/', '.')
         try:
             dat = datetime.strptime(date, '%d.%m.%y')
         except ValueError:
@@ -1596,7 +1598,8 @@ class AlterRequest(tk.Frame):
         self.plan_date = tk.StringVar()
         self.plan_date_entry = DateEntry(self.top, width=12, state='readonly',
                                          textvariable=self.plan_date, font=('Arial', 9),
-                                         selectmode='day', borderwidth=2)
+                                         selectmode='day', borderwidth=2,
+                                         locale='ru_RU')
         self.plan_date_entry.set_date(self.request_date)
 
         self.altsum_head_label = tk.Label(self.top,
