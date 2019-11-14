@@ -1636,7 +1636,7 @@ class AlterRequest(tk.Frame):
         new_date = self.plan_date_entry.get_date()
         # convert to datetime for SQL
         new_date = datetime.combine(new_date, datetime.min.time())
-        new_sum = round(float(self.sumtotal.get_float_form()), 2)
+        new_sum = Decimal(self.sumtotal.get_float_form()).quantize(Decimal('.01'))
         result = self.conn.alter_payment(self.userID, self.paymentID,
                                          new_date, new_sum)
         if not result:
@@ -1663,7 +1663,7 @@ class AlterRequest(tk.Frame):
         new_date = self.plan_date_entry.get_date()
         # Input check
         try:
-            new_sum = float(self.sumtotal.get_float_form())
+            new_sum = Decimal(self.sumtotal.get_float_form()).quantize(Decimal('.01'))
         except ValueError:
             raise IncorrectFloatError(self.sumtotal.get())
         date_diff = (self.request_date - new_date)
