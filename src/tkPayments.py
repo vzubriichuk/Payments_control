@@ -1163,7 +1163,7 @@ class PreviewForm(PaymentFrame):
         options - tuple, arguments that will be sent to frame.
         """
         newlevel = tk.Toplevel(self.parent)
-        newlevel.transient(self)  # disable minimize/maximize buttons
+        #newlevel.transient(self)  # disable minimize/maximize buttons
         newlevel.title(title)
         newlevel.bind('<Escape>', lambda e, w=newlevel: w.destroy())
         frame(newlevel, *options)
@@ -1242,7 +1242,7 @@ class PreviewForm(PaymentFrame):
             if curRow:
                 newlevel = tk.Toplevel(self.parent)
                 newlevel.withdraw()
-                newlevel.transient(self)  # disable minimize/maximize buttons
+                #newlevel.transient(self.parent)  # disable minimize/maximize buttons
                 newlevel.title('Заявка детально')
                 newlevel.iconbitmap('resources/preview.ico')
                 newlevel.bind('<Escape>', lambda e, w=newlevel: w.destroy())
