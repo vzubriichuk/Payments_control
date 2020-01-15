@@ -4,12 +4,12 @@ block_cipher = None
 
 
 a = Analysis(['payments.py'],
-             pathex=['D:\\Git\\Payments_control\\src'],
+             pathex=['.'],
              binaries=[],
-             datas=[( 'D:\\Git\\Payments_control\\src\\resources\\*.ico', 'resources' ),
-                    ( 'D:\\Git\\Payments_control\\src\\resources\\*.pdf', 'resources' ),
-                    ( 'D:\\Git\\Payments_control\\src\\resources\\*.png', 'resources' ),
-                    ( 'D:\\Git\\Payments_control\\src\\resources\\*.txt', 'resources' )],
+             datas=[( '.\\resources\\*.ico', 'resources' ),
+                    ( '.\\resources\\*.pdf', 'resources' ),
+                    ( '.\\resources\\*.png', 'resources' ),
+                    ( '.\\resources\\*.txt', 'resources' )],
              hiddenimports=['babel.numbers'],
              hookspath=[],
              runtime_hooks=[],
