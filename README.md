@@ -55,7 +55,7 @@ The instructions about work with application should be added to <i>./src/resourc
 
 * [pyodbc](https://github.com/mkleehammer/pyodbc)
 
-* [pythoncom](https://github.com/mkleehammer/pyodbc) (part of [pywin32](https://github.com/mhammond/pywin32); when have a problem installing pywin32, check [pypiwin32](https://stackoverflow.com/questions/49307303/installing-the-pypiwin32-module) and [postinstall](https://www.reddit.com/r/Python/comments/57h1pf/pywin32_not_installing_properly/))
+* pythoncom (part of [pywin32](https://github.com/mhammond/pywin32); when have a problem installing pywin32, check [pypiwin32](https://stackoverflow.com/questions/49307303/installing-the-pypiwin32-module) and [postinstall](https://www.reddit.com/r/Python/comments/57h1pf/pywin32_not_installing_properly/))
 
 * win32com (also part of pywin32)
 
