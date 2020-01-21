@@ -59,6 +59,6 @@ The instructions about work with application should be added to <i>./src/resourc
 
 * win32com (also part of pywin32)
 
-* [tkcalendar](https://github.com/j4321/tkcalendar) (GNU General Public License v3.0)
+* [tkcalendar](https://github.com/j4321/tkcalendar) version `1.5.0`, `1.6.1` or higher (GNU General Public License v3.0)
 
 * [xlsxwriter](https://pypi.org/project/XlsxWriter/) (BSD License)
