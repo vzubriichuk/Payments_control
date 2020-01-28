@@ -417,7 +417,7 @@ class CreateForm(PaymentFrame):
 
         self.mvz_label = tk.Label(row1_cf, text='МВЗ', padx=10)
         self.mvz_current = tk.StringVar()
-        #self.mvz_current.set(self.mvznames[0]) # default value
+        # self.mvz_current.set(self.mvznames[0]) # default value
         self.mvz_box = ttk.OptionMenu(row1_cf, self.mvz_current, '', *self.mvz.keys(),
                                       command=self._restraint_by_mvz)
         self.mvz_box.config(width=40)
@@ -574,7 +574,8 @@ class CreateForm(PaymentFrame):
         request = {'mvz': self.mvz_sap.cget('text') or None,
                    'office': self.office_box.get(),
                    'categoryID': self.categories[self.category_box.get()],
-                   'contragent': self.contragent_entry.get().strip() or None,
+                   'contragent': self.contragent_entry.get().strip().replace(
+                       '\n','') or None,
                    'csp': self.csp_entry.get() or None,
                    'plan_date': self._convert_date(self.plan_date_entry.get()),
                    'sumtotal': sumtotal,
@@ -913,7 +914,7 @@ class PreviewForm(PaymentFrame):
                              command=self._create_from_current)
             bt2.pack(side=tk.LEFT, padx=10, pady=10)
 
-        if self.user_info.UserID in (42, 76):
+        if self.user_info.UserID in (42, 76, 20):
             bt3 = ttk.Button(bottom_cf, text="Изменить заявку", width=20,
                              command=self._alter_request)
             bt3.pack(side=tk.LEFT, padx=10, pady=10)
@@ -930,7 +931,7 @@ class PreviewForm(PaymentFrame):
                          command=self._export_to_excel)
         bt4.pack(side=tk.RIGHT, padx=10, pady=10)
 
-        if self.userID in (6, 24, 42, 76):
+        if self.userID in (6, 24, 42, 76, 20):
             bt4a = ttk.Button(bottom_cf, text="Изменить лимиты", width=20,
                 command=self._alter_limits)
             bt4a.pack(side=tk.RIGHT, padx=10, pady=10)
@@ -1229,7 +1230,6 @@ class PreviewForm(PaymentFrame):
         self._raise_Toplevel(frame=AboutFrame,
                              title='Заявки на оплату v. ' + __version__,
                              width=400, height=150)
-
 
     def _show_detail(self, event=None):
         """ Show details when double-clicked on row. """
