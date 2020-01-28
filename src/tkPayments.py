@@ -417,7 +417,7 @@ class CreateForm(PaymentFrame):
 
         self.mvz_label = tk.Label(row1_cf, text='МВЗ', padx=10)
         self.mvz_current = tk.StringVar()
-        #self.mvz_current.set(self.mvznames[0]) # default value
+        # self.mvz_current.set(self.mvznames[0]) # default value
         self.mvz_box = ttk.OptionMenu(row1_cf, self.mvz_current, '', *self.mvz.keys(),
                                       command=self._restraint_by_mvz)
         self.mvz_box.config(width=40)
@@ -1230,7 +1230,6 @@ class PreviewForm(PaymentFrame):
         self._raise_Toplevel(frame=AboutFrame,
                              title='Заявки на оплату v. ' + __version__,
                              width=400, height=150)
-
 
     def _show_detail(self, event=None):
         """ Show details when double-clicked on row. """
