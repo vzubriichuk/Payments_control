@@ -13,6 +13,7 @@ from label_grid import LabelGrid
 from multiselect import MultiselectMenu
 from tkcalendar import DateEntry
 from tkinter import ttk, messagebox
+import tkinter.font as tkFont
 from tkHyperlinkManager import HyperlinkManager
 from math import floor
 from xl import export_to_excel
@@ -330,12 +331,13 @@ class PaymentApp(tk.Tk):
 
 class PaymentFrame(tk.Frame):
     def __init__(self, parent, controller, connection, user_info,
-                 mvz, categories):
+                 mvz, categories, pay_conditions):
         super().__init__(parent)
         self.parent = parent
         self.controller = controller
         self.conn = connection
         self.categories = dict(categories)
+        self.pay_conditions = dict(pay_conditions)
         # {mvzSAP: [mvzname, [office1, office2, ...]], ...}
         self.mvz = {}
         if isinstance(self, PreviewForm):
@@ -348,6 +350,8 @@ class PaymentFrame(tk.Frame):
         self.user_info = user_info
         # Often used info
         self.userID = user_info.UserID
+        self.PayConditionsDefaultID = user_info.PayConditionsID
+
 
     def _add_user_label(self, parent):
         """ Adds user name in top right corner. """
@@ -394,13 +398,12 @@ class PaymentFrame(tk.Frame):
 
 class CreateForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info,
-                 mvz, categories, approvals_for_first_stage, **kwargs):
+                 mvz, categories, pay_conditions, approvals_for_first_stage, **kwargs):
         super().__init__(parent, controller, connection, user_info,
-                         mvz, categories)
+                         mvz, categories, pay_conditions)
         self.approvals_for_first_stage = dict(approvals_for_first_stage)
         # Top Frame with description and user name
         top = tk.Frame(self, name='top_cf', padx=5)
-
         self.main_label = tk.Label(top, text='Форма создания заявки на согласование',
                               padx=10, font=('Arial', 8, 'bold'))
 
@@ -408,6 +411,12 @@ class CreateForm(PaymentFrame):
                               padx=10, font=('Arial', 8, 'bold'), fg='#003db9')
         self.limit_month = tk.Label(top, text='', font=('Arial', 9))
         self.limit_sum = tk.Label(top, text='', font=('Arial', 8, 'bold'))
+
+        self.pay_conditions = dict(pay_conditions)
+        # Choose default pay conditions for current user
+        for key, value in self.pay_conditions.items():
+            if value == self.PayConditionsDefaultID:
+                self.PayConditionsDefault = key
 
         self._add_user_label(top)
         self._top_pack()
@@ -470,22 +479,31 @@ class CreateForm(PaymentFrame):
 
         self._row3_pack()
 
-        # Fourth Fill Frame with (is_cashless)
+        # Fourth Fill Frame with (cashless)
         row4_cf = tk.Frame(self, name='row4_cf', padx=15)
 
         self.cashless_label = tk.Label(row4_cf, text='Вид платежа', padx=10)
-        self.is_cashless = tk.IntVar()
-        self.is_cashless.set(1)
-        self.cashless_radiobutton0 = ttk.Radiobutton(row4_cf, text="наличный",
-                                      variable=self.is_cashless, value=0)
-        self.cashless_radiobutton1 = ttk.Radiobutton(row4_cf, text="безналичный",
-                                      variable=self.is_cashless, value=1)
+        self.cashless = ttk.Combobox(row4_cf, width=14, state='readonly')
+        self.cashless['values'] = ['наличный','безналичный']
+        self.cashless.current(1)
+        # Pay conditions variances with fill value as default for user
+        self.pay_conditions_label = tk.Label(row4_cf, text='Условия оплаты', padx=10)
+        self.pay_conditions_box = ttk.Combobox(row4_cf, width=15,
+                                               state='disable')
+        self.pay_conditions_box['values'] = list(self.pay_conditions)
+        self.pay_conditions_box.current(list(self.pay_conditions).
+                                        index(self.PayConditionsDefault))
+        self.initiator_label = tk.Label(row4_cf, text='Инициатор')
+        self.initiator_name = tk.Entry(row4_cf, width=20)
+        sc = tk.Entry(row4_cf, width=15)
 
         # Text Frame
         text_cf = ttk.LabelFrame(self, text=' Описание заявки ', name='text_cf')
 
-        self.desc_text = tk.Text(text_cf)    # input and output box
-        self.desc_text.pack(in_=text_cf, expand=True, pady=15)
+        self.customFont = tkFont.Font(family="Arial", size=10)
+        self.desc_text = tk.Text(text_cf, font=self.customFont)  # input and output box
+        self.desc_text.configure(width=100)
+        self.desc_text.pack(in_=text_cf, expand=True)
 
         # Approval choose Frame
         appr_cf = tk.Frame(self, name='appr_cf', padx=15)
@@ -518,7 +536,7 @@ class CreateForm(PaymentFrame):
         row2_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
         row3_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
         row4_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
-        text_cf.pack(side=tk.TOP, fill=tk.X, expand=True, padx=10, pady=5)
+        text_cf.pack(side=tk.TOP, fill=tk.X, expand=True, padx=15, pady=15)
 
     def _check_limit(self, *args, **kwargs):
         """ Show remaining limit for month corresponding to month of plan_date.
@@ -535,6 +553,7 @@ class CreateForm(PaymentFrame):
         self.mvz_current.set('')
         self.mvz_sap.config(text='')
         self.category_box.set('')
+        self.pay_conditions_box.set('По факту')
         self.office_box.set('')
         self.office_box.configure(state="disabled")
         self.contragent_entry.delete(0, tk.END)
@@ -544,7 +563,9 @@ class CreateForm(PaymentFrame):
         self.desc_text.delete("1.0", tk.END)
         self.plan_date_entry.set_date(datetime.now())
         self.approval_box.set('')
-        self.is_cashless.set(1)
+        self.cashless.set('безналичный')
+        self.initiator_name.delete(0, tk.END)
+
 
     def _convert_date(self, date, output=None):
         """ Take date and convert it into output format.
@@ -562,6 +583,7 @@ class CreateForm(PaymentFrame):
             return dat.strftime(output)
         return dat
 
+
     def _create_request(self):
         messagetitle = 'Создание заявки'
         sumtotal = float(self.sumtotal.get_float_form()
@@ -569,6 +591,8 @@ class CreateForm(PaymentFrame):
         is_validated = self._validate_request_creation(messagetitle, sumtotal)
         if not is_validated:
             return
+
+        is_cashless = 1 if self.cashless.get() == 'безналичный' else 0
         first_approval = (self.approvals_for_first_stage[self.approval_box.get()]
                           if self.approval_box.get() else None)
         request = {'mvz': self.mvz_sap.cget('text') or None,
@@ -582,7 +606,10 @@ class CreateForm(PaymentFrame):
                    'nds':  self.nds.get(),
                    'text': self.desc_text.get("1.0", tk.END).strip(),
                    'approval': first_approval,
-                   'is_cashless': self.is_cashless.get()
+                   'is_cashless': is_cashless,
+                   'payconditionsID': self.pay_conditions[
+                                                self.pay_conditions_box.get()],
+                   'initiator_name': self.initiator_name.get()
                    }
         created_success = self.conn.create_request(userID=self.userID, **request)
         if created_success == 1:
@@ -660,8 +687,11 @@ class CreateForm(PaymentFrame):
 
     def _row4_pack(self):
         self.cashless_label.pack(side=tk.LEFT)
-        self.cashless_radiobutton0.pack(side=tk.LEFT, padx=7)
-        self.cashless_radiobutton1.pack(side=tk.LEFT, padx=7)
+        self.cashless.pack(side=tk.LEFT, padx=16)
+        self.pay_conditions_label.pack(side=tk.LEFT)
+        self.pay_conditions_box.pack(side=tk.LEFT, padx=5)
+        self.initiator_label.pack(side=tk.LEFT, padx=5)
+        self.initiator_name.pack(side=tk.LEFT, padx=5)
         self.approval_label.pack(side=tk.LEFT)
         self.approval_box.pack(side=tk.LEFT, padx=5)
 
@@ -686,6 +716,11 @@ class CreateForm(PaymentFrame):
         if not self.category_box.get():
             messagebox.showerror(
                     messagetitle, 'Не выбрана категория'
+            )
+            return False
+        if not self.pay_conditions_box.get():
+            messagebox.showerror(
+                    messagetitle, 'Не выбраны условия оплаты'
             )
             return False
         if not sumtotal:
@@ -732,9 +767,9 @@ class CreateForm(PaymentFrame):
 
 class PreviewForm(PaymentFrame):
     def __init__(self, parent, controller, connection, user_info, mvz,
-                 allowed_initiators, categories, status_list, **kwargs):
+                 allowed_initiators, categories, pay_conditions, status_list, **kwargs):
         super().__init__(parent, controller, connection, user_info,
-                         mvz, categories)
+                         mvz, categories, pay_conditions)
         self.office = tuple(sorted(set(x for lst in map(lambda v: v[1],
                                                         self.mvz.values()) for x in lst),
                                    key=lambda s: '' if s == 'Все' else s))
@@ -773,7 +808,7 @@ class PreviewForm(PaymentFrame):
         # First Filter Frame with (MVZ, office)
         row1_cf = tk.Frame(filterframe, name='row1_cf', padx=15)
 
-        self.initiator_label = tk.Label(row1_cf, text='Инициатор', padx=10)
+        self.initiator_label = tk.Label(row1_cf, text='Кем создано', padx=10)
         self.initiator_box = ttk.Combobox(row1_cf, width=35, state='readonly')
         self.initiator_box['values'] = self.initiators
 
@@ -873,11 +908,13 @@ class PreviewForm(PaymentFrame):
         # column name and width
         #self.headings=('a', 'bb', 'cccc')  # for debug
         self.headings = {'№ п/п': 30, 'ID': 0, 'InitiatorID': 0, '№ заявки': 100,
-            'Инициатор': 130, 'Дата создания': 80, 'Дата/время создания': 120,
-            'CSP':30, 'МВЗ SAP': 70, 'МВЗ': 150, 'Офис': 80, 'Категория': 80,
-            'Контрагент': 60, 'Плановая дата': 90, 'Сумма без НДС': 85,
-            'Сумма с НДС': 85, 'Вид платежа':0, 'Статус': 45, 'Статус заявки': 120,
-            'Описание': 120, 'ID Утверждающего': 0, 'Утверждающий': 120}
+            'Кем создано': 130, 'Инициатор': 0, 'Дата создания': 80
+            , 'Дата/время создания': 120,'CSP':30, 'МВЗ SAP': 70, 'МВЗ': 150
+            , 'Офис': 80, 'Категория': 80, 'Условия оплаты':80
+            , 'Контрагент': 60, 'Плановая дата': 90, 'Сумма без НДС': 85
+            , 'Сумма с НДС': 85, 'Вид платежа':0, 'Статус': 45,
+            'Статус заявки': 120, 'Описание': 120, 'ID Утверждающего': 0,
+            'Утверждающий': 120}
 
         if self.EXTENDED_MODE:
             self.table = CheckboxTreeview(preview_cf,
@@ -975,7 +1012,7 @@ class PreviewForm(PaymentFrame):
                                  options=(self, self.conn, self.userID,
                                           request_info[0]))
 
-    def  _approve_multiple(self):
+    def _approve_multiple(self):
         """ Allows to approve multiple requests chosen in PreviewForm.
         """
         curItems = (item for item in self.table.get_children()
@@ -1119,8 +1156,9 @@ class PreviewForm(PaymentFrame):
             self.table["columns"] = tuple(self.headings.keys())
             self.table["displaycolumns"] = tuple(k for k in self.headings.keys()
                 if k not in ('ID', 'НДС', 'Описание', 'Дата/время создания',
-                             'МВЗ', 'Категория', 'Вид платежа', 'Статус заявки',
-                             'InitiatorID', 'ID Утверждающего'))
+                             'МВЗ', 'Категория', 'Условия оплаты', 'Вид платежа',
+                             'Статус заявки','InitiatorID', 'ID Утверждающего',
+                             'Инициатор'))
             for head, width in self.headings.items():
                 self.table.heading(head, text=head, anchor=tk.CENTER)
                 self.table.column(head, width=width, anchor=tk.CENTER)
@@ -1641,7 +1679,7 @@ class AlterRequest(tk.Frame):
                                          new_date, new_sum)
         if not result:
             messagebox.showerror(self.parent.title(),
-                                 'Произошла ошибка при выполении запроса')
+                                 'Произошла ошибка при выполнении запроса')
         else:
             messagebox.showinfo(self.parent.title(), 'Запрос выполнен')
             self.parentform._refresh()
@@ -1686,15 +1724,17 @@ if __name__ == '__main__':
     from collections import namedtuple
 
     UserInfo = namedtuple('UserInfo', ['UserID', 'ShortUserName',
-                                       'AccessType', 'isSuperUser', 'GroupID'])
+                                       'AccessType', 'isSuperUser', 'GroupID',
+                                       'PayConditionsID'])
 
-    with DBConnect(server='s-kv-center-s59', db='LogisticFinance') as sql:
+    with DBConnect(server='s-kv-center-s59', db='AnalyticReports') as sql:
         try:
             app = PaymentApp(connection=sql,
-                             user_info=UserInfo(24, 'TestName', 1, 1, 1),
+                             user_info=UserInfo(24, 'TestName', 2, 1, 1, 2),
                              mvz=[('20511RC191', '20511RC191', 'Офис'),
                                   ('40900A2595', '40900A2595', 'Офис')],
                              categories=[('Cat1', 1), ('Cat2', 2)],
+                             pay_conditions=[('Cat1', 1), ('Cat2 cat', 2)],
                              allowed_initiators=[(None, 'Все'), (1, 2), (3, 4)],
                              approvals_for_first_stage=[('a', 1), ('b', 2)],
                              status_list=[(1, 'На согл.'), (2, 'Отозв.')]
