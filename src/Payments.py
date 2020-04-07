@@ -75,7 +75,7 @@ def main():
     check_meta_update()
     # Check connection to db and permission to work with app
     try:
-        with DBConnect(server='s-kv-center-s59', db='LogisticFinance') as sql:
+        with DBConnect(server='s-kv-center-s59', db='AnalyticReports') as sql:
             access_permitted = sql.access_check()
             if not access_permitted:
                 tkp.AccessError()
