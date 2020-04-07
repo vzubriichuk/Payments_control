@@ -74,8 +74,24 @@ def check_meta_update():
 def main():
     check_meta_update()
     # Check connection to db and permission to work with app
+    config = {}
     try:
-        with DBConnect(server='s-kv-center-s59', db='AnalyticReports') as sql:
+        with open('config.ini', 'r') as f:
+            for line in f:
+                # Ignore lines started with "#" and blank lines
+                if not line.startswith('#') and line.strip():
+                    k = line[:line.index(':')].strip()
+                    v = line[line.index(':') + 1:].strip()
+                    config[k] = v
+
+    except ValueError:
+        writelog('Error: config.ini have unappropriate lines: ' + line)
+        sys.exit(1)
+
+    conn = DBConnect(server=config['server'],
+                     db=config['db'])
+    try:
+        with conn as sql:
             access_permitted = sql.access_check()
             if not access_permitted:
                 tkp.AccessError()
