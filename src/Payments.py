@@ -13,6 +13,7 @@ from singleinstance import Singleinstance
 import os, sys
 import tkPayments as tkp
 import getpass
+import pwd
 
 UPDATER_VERSION = '0.9.20a'
 
@@ -75,22 +76,12 @@ def check_meta_update():
 def main():
     check_meta_update()
     # Check connection to db and permission to work with app
-    config = {}
-    try:
-        with open('config.ini', 'r') as f:
-            for line in f:
-                # Ignore lines started with "#" and blank lines
-                if not line.startswith('#') and line.strip():
-                    k = line[:line.index(':')].strip()
-                    v = line[line.index(':') + 1:].strip()
-                    config[k] = v
-
-    except ValueError:
-        writelog('Error: config.ini have unappropriate lines: ' + line)
-        sys.exit(1)
-
-    conn = DBConnect(server=config['server'],
-                     db=config['db'], uid=config['uid'], pwd=config['pwd'])
+    # If debug mode then 1 else 0
+    db_info = pwd.access_return(0)
+    conn = DBConnect(server=db_info.get('Server'),
+                     db=db_info.get('DB'),
+                     uid=db_info.get('UID'),
+                     pwd=db_info.get('PWD'))
     try:
         with conn as sql:
             UserLogin = getpass.getuser()
@@ -108,8 +99,7 @@ def main():
 
             # load references
             user_info = UserInfo(*sql.get_user_info(UserLogin))
-
-            print(user_info)
+            # print(user_info)
             # Restriction: users in approvals_for_first_stage
             # should have different names to be distinguished
             refs = {'connection': sql,
