@@ -8,9 +8,11 @@ from functools import wraps
 from tkPayments import NetworkError
 import pyodbc
 
+
 def monitor_network_state(method):
     """ Show error message in case of network error.
     """
+
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         try:
@@ -19,24 +21,32 @@ def monitor_network_state(method):
             # Network error
             if e.args[0] in ('01000', '08S01', '08001'):
                 NetworkError()
+
     return wrapper
 
 
 class DBConnect(object):
     """ Provides connection to database and functions to work with server.
     """
-    def __init__(self, *, server, db):
+
+    def __init__(self, *, server, db, uid, pwd):
         self._server = server
         self._db = db
+        self._uid = uid
+        self._pwd = pwd
 
     def __enter__(self):
         # Connection properties
         conn_str = (
-            'Driver={{SQL Server}};'
-            'Server={0};'
-            'Database={1};'
-            'Trusted_Connection=yes;'.format(self._server, self._db)
+            f'Driver={{SQL Server}};'
+            f'Server={self._server};'
             )
+        if self._db is not None:
+            conn_str += f'Database={self._db};'
+        if self._uid:
+            conn_str += f'uid={self._uid};pwd={self._pwd}'
+        else:
+            conn_str += 'Trusted_Connection=yes;'
         self.__db = pyodbc.connect(conn_str)
         self.__cursor = self.__db.cursor()
         return self
@@ -45,11 +55,15 @@ class DBConnect(object):
         self.__db.close()
 
     @monitor_network_state
-    def access_check(self):
+    def access_check(self, UserLogin):
         """ Check user permission.
-            If access prmitted returns True, otherwise None.
+            If access permitted returns True, otherwise None.
         """
-        self.__cursor.execute("exec [payment].[Access_Check]")
+        query = '''
+                exec payment.Access_Check @UserLogin = ?
+        '''
+
+        self.__cursor.execute(query, UserLogin)
         access = self.__cursor.fetchone()
         # check AccessType and isSuperUser
         if access and (access[0] in (1, 2, 3) or access[1]):
@@ -67,7 +81,8 @@ class DBConnect(object):
         '''
 
         try:
-            self.__cursor.execute(query, userID, paymentID, date_planed, SumNoTax)
+            self.__cursor.execute(query, userID, paymentID, date_planed,
+                                  SumNoTax)
             self.__db.commit()
             return 1
         except pyodbc.ProgrammingError:
@@ -107,16 +122,16 @@ class DBConnect(object):
             return
 
     @monitor_network_state
-    def get_user_info(self):
+    def get_user_info(self, UserLogin):
         """ Returns information about current user based on ORIGINAL_LOGIN().
         """
         query = '''
         select UserID, ShortUserName, AccessType, isSuperUser, GroupID
         , isNULL(PayConditionsID, 1) as PayConditionsID
         from payment.People
-        where UserLogin = right(ORIGINAL_LOGIN(), len(ORIGINAL_LOGIN()) - charindex( '\\' , ORIGINAL_LOGIN()))
+        where UserLogin = ?
         '''
-        self.__cursor.execute(query)
+        self.__cursor.execute(query, UserLogin)
         return self.__cursor.fetchone()
 
     @monitor_network_state
@@ -129,7 +144,7 @@ class DBConnect(object):
                                             @isSuperUser = ?
         '''
         self.__cursor.execute(query, UserID, AccessType, isSuperUser)
-        return [(None, 'Все'),] + self.__cursor.fetchall()
+        return [(None, 'Все'), ] + self.__cursor.fetchall()
 
     @monitor_network_state
     def get_approvals(self, paymentID):
@@ -162,7 +177,6 @@ class DBConnect(object):
         query = "exec payment.get_pay_conditions"
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
-
 
     @monitor_network_state
     def get_info_to_alter_payment(self, paymentID):
@@ -253,7 +267,8 @@ class DBConnect(object):
             if user_info.UserID == 24:
                 query += 'and pl.StatusID = 1 and appr.UserID in (9, 24)\n'
             else:
-                query += 'and pl.StatusID = 1 and appr.UserID = {}\n'.format(user_info.UserID)
+                query += 'and pl.StatusID = 1 and appr.UserID = {}\n'.format(
+                    user_info.UserID)
         else:
             # determine explicitly which date_type has been chosen
             date_type = ('date_planed', 'date_created')[date_type]
@@ -266,10 +281,11 @@ class DBConnect(object):
                     query += "and (pl.UserID = {}\n".format(user_info.UserID)
                 query += ("or exists(select * from payment.PaymentsApproval _appr \
                         where pl.ID = _appr.PaymentID and _appr.UserID = {}))\n"
-                                     .format(user_info.UserID))
+                          .format(user_info.UserID))
             if payment_num:
                 query += "and replace(convert(varchar, date_created, 102),'.','') + \
-                '_' + cast(pl.RealID as varchar(7)) = '{}'\n".format(payment_num[3:])
+                '_' + cast(pl.RealID as varchar(7)) = '{}'\n".format(
+                    payment_num[3:])
             else:
                 if initiator:
                     query += "and pl.UserID = {}\n".format(initiator)
@@ -293,7 +309,7 @@ class DBConnect(object):
         if user_info.UserID in (42, 81, 75):
             query += "order by IIF(pl.StatusID in (2, 4), 2, 1) ASC, ID DESC"
         else:
-            query += "order by ID DESC" # the same as created(datetime) DESC
+            query += "order by ID DESC"  # the same as created(datetime) DESC
         self.__cursor.execute(query)
         return self.__cursor.fetchall()
 
@@ -351,8 +367,14 @@ class DBConnect(object):
 
 
 if __name__ == '__main__':
-    with DBConnect(server='s-kv-center-s64', db='CB') as sql:
-        query = 'select 42'
-        assert sql.raw_query(query)[0][0] == 42, 'Server returns no output.'
+    with DBConnect(server='s-kv-center-s59', db='LogisticFinance',
+                   uid='XXX', pwd='XXX') as sql:
+        query = '''
+                exec payment.get_MVZ @UserID = 20,
+                                     @AccessType = 1,
+                                     @isSuperUser = 0
+                '''
+        print(sql.raw_query(query))
+        # assert sql.raw_query(query)[0][0] == 42, 'Server returns no output.'
     print('Connected successfully.')
     input('Press Enter to exit...')

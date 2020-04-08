@@ -32,6 +32,9 @@ MANIFEST
 *.spec
 !src/payments.spec
 
+# DB connect info
+config.ini
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt

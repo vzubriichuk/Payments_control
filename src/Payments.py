@@ -12,6 +12,7 @@ from time import sleep
 from singleinstance import Singleinstance
 import os, sys
 import tkPayments as tkp
+import getpass
 
 UPDATER_VERSION = '0.9.20a'
 
@@ -89,10 +90,12 @@ def main():
         sys.exit(1)
 
     conn = DBConnect(server=config['server'],
-                     db=config['db'])
+                     db=config['db'], uid=config['uid'], pwd=config['pwd'])
     try:
         with conn as sql:
-            access_permitted = sql.access_check()
+            UserLogin = getpass.getuser()
+            # UserLogin = 'm.gromada'
+            access_permitted = sql.access_check(UserLogin)
             if not access_permitted:
                 tkp.AccessError()
                 sys.exit()
@@ -102,11 +105,11 @@ def main():
                  'GroupID', 'PayConditionsID']
             )
 
+
             # load references
-            user_info = UserInfo(*sql.get_user_info())
+            user_info = UserInfo(*sql.get_user_info(UserLogin))
 
             print(user_info)
-            # user_info = UserInfo(24, 'TestName', 2, 1, None, 2)
             # Restriction: users in approvals_for_first_stage
             # should have different names to be distinguished
             refs = {'connection': sql,
@@ -131,7 +134,7 @@ def main():
     except SQLError as e:
         # login failed
         if e.args[0] in ('28000', '42000'):
-            #writelog(e)
+            # writelog(e)
             tkp.LoginError()
         else:
             raise
