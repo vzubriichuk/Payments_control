@@ -202,7 +202,7 @@ class PaymentApp(tk.Tk):
         self.state_PreviewForm = 'normal'
         # geometry_storage {Framename:(width, height)}
         self._geometry = {'PreviewForm': (1200, 600),
-                          'CreateForm': (750, 440)}
+                          'CreateForm': (850, 440)}
         # Virtual event for creating request
         self.event_add("<<create>>", "<Control-S>", "<Control-s>",
                        "<Control-Ucircumflex>", "<Control-ucircumflex>",
@@ -275,11 +275,11 @@ class PaymentApp(tk.Tk):
 
         self.geometry('{}x{}+{}+{}'.format(w, h, start_x, start_y))
 
-    def _fill_CreateForm(self, МВЗ, Офис, Категория, Контрагент, Описание,
+    def _fill_CreateForm(self, МВЗ, Офис, Категория, Контрагент, ЕГРПОУ,  Описание,
                          **kwargs):
         """ Control function to transfer data from Preview- to CreateForm. """
         frame = self._frames['CreateForm']
-        frame._fill_from_PreviewForm(МВЗ, Офис, Категория, Контрагент, Описание)
+        frame._fill_from_PreviewForm(МВЗ, Офис, Категория, Контрагент, ЕГРПОУ, Описание)
 
     def _onKeyRelease(*args):
         event = args[1]
@@ -424,85 +424,104 @@ class CreateForm(PaymentFrame):
         # First Fill Frame with (MVZ, office)
         row1_cf = tk.Frame(self, name='row1_cf', padx=15)
 
-        self.mvz_label = tk.Label(row1_cf, text='МВЗ', padx=10)
+        self.mvz_label = tk.Label(row1_cf, text='МВЗ', padx=7)
         self.mvz_current = tk.StringVar()
         # self.mvz_current.set(self.mvznames[0]) # default value
         self.mvz_box = ttk.OptionMenu(row1_cf, self.mvz_current, '', *self.mvz.keys(),
                                       command=self._restraint_by_mvz)
         self.mvz_box.config(width=40)
-        self.mvz_sap = tk.Label(row1_cf, padx=6, bg='lightgray', width=11)
-
-        self.category_label = tk.Label(row1_cf, text='Категория', padx=10)
-        self.category_box = ttk.Combobox(row1_cf, width=29, state='readonly')
-        self.category_box['values'] = list(self.categories)
+        self.mvz_sap_label = tk.Label(row1_cf, text='МВЗ SAP', padx=10)
+        self.mvz_sap = tk.Label(row1_cf, padx=10, bg='lightgray', width=11)
+        self.office_label = tk.Label(row1_cf, text='Офис', padx=10)
+        self.office_box = ttk.Combobox(row1_cf, width=20, state='disabled')
 
         self._row1_pack()
 
-        # Second Fill Frame with (contragent, CSP)
+        # Second Fill Frame
         row2_cf = tk.Frame(self, name='row2_cf', padx=15)
 
-        self.office_label = tk.Label(row2_cf, text='Офис', padx=10)
-        self.office_box = ttk.Combobox(row2_cf, width=20, state='disabled')
-        self.contragent_label = tk.Label(row2_cf, text='Контрагент')
-        self.contragent_entry = tk.Entry(row2_cf, width=28)
-        self.csp = tk.Label(row2_cf, text='CSP', padx=10)
-        self.csp_entry = tk.Entry(row2_cf, width=26)
+        self.category_label = tk.Label(row2_cf, text='Категория', padx=7)
+        self.category_box = ttk.Combobox(row2_cf, width=23, state='readonly')
+        self.category_box['values'] = list(self.categories)
 
-        self._row2_pack()
-
-        # Second Fill Frame with (Plan date, Sum, Tax)
-        row3_cf = tk.Frame(self, name='row3_cf', padx=15)
-
-        self.plan_date_label = tk.Label(row3_cf, text='Плановая дата', padx=10)
+        self.plan_date_label = tk.Label(row2_cf, text='Плановая дата', padx=0)
         self.plan_date = tk.StringVar()
         self.plan_date.trace("w", self._check_limit)
-        self.plan_date_entry = DateEntry(row3_cf, width=12, state='readonly',
-                                         textvariable=self.plan_date, font=('Arial', 9),
+        self.plan_date_entry = DateEntry(row2_cf, width=16, state='readonly',
+                                         textvariable=self.plan_date,
+                                         font=('Arial', 9),
                                          selectmode='day', borderwidth=2,
                                          locale='ru_RU')
-        self.sum_label = tk.Label(row3_cf, text='Сумма без НДС, грн')
+
+        self.sum_label = tk.Label(row2_cf, text='Сумма без НДС, грн', padx=3)
         self.sumtotal = StringSumVar()
         self.sumtotal.set('0,00')
         vcmd = (self.register(self._validate_sum))
-        self.sum_entry = tk.Entry(row3_cf, name='sum_entry', width=16,
+        self.sum_entry = tk.Entry(row2_cf, name='sum_entry', width=18,
                                   textvariable=self.sumtotal, validate='all',
                                   validatecommand=(vcmd, '%P')
                                   )
         self.sum_entry.bind("<FocusIn>", self._on_focus_in_format_sum)
         self.sum_entry.bind("<FocusOut>", self._on_focus_out_format_sum)
-        self.nds_label = tk.Label(row3_cf, text='НДС', padx=20)
+
+        self._row2_pack()
+
+        # Third Fill Frame
+        row3_cf = tk.Frame(self, name='row3_cf', padx=15)
+
+        self.contragent_label = tk.Label(row3_cf, text='Контрагент')
+        self.contragent_entry = tk.Entry(row3_cf, width=26)
+
+        self.cashless_label = tk.Label(row3_cf, text='Вид платежа', padx=7)
+        self.cashless = ttk.Combobox(row3_cf, width=19, state='readonly')
+        self.cashless['values'] = ['наличный', 'безналичный']
+        self.cashless.current(1)
+
+        self.nds_label = tk.Label(row3_cf, text='Ставка НДС', padx=0)
         self.nds = tk.IntVar()
         self.nds.set(20)
-        self.nds20 = ttk.Radiobutton(row3_cf, text="20 %", variable=self.nds, value=20)
-        self.nds7 = ttk.Radiobutton(row3_cf, text="7 %", variable=self.nds, value=7)
-        self.nds0 = ttk.Radiobutton(row3_cf, text="0 %", variable=self.nds, value=0)
+        self.nds20 = ttk.Radiobutton(row3_cf, text="20 %", variable=self.nds,
+                                     value=20)
+        self.nds7 = ttk.Radiobutton(row3_cf, text="7 %", variable=self.nds,
+                                    value=7)
+        self.nds0 = ttk.Radiobutton(row3_cf, text="0 %", variable=self.nds,
+                                    value=0)
 
         self._row3_pack()
 
         # Fourth Fill Frame with (cashless)
         row4_cf = tk.Frame(self, name='row4_cf', padx=15)
 
-        self.cashless_label = tk.Label(row4_cf, text='Вид платежа', padx=10)
-        self.cashless = ttk.Combobox(row4_cf, width=14, state='readonly')
-        self.cashless['values'] = ['наличный','безналичный']
-        self.cashless.current(1)
+        self.okpo_label = tk.Label(row4_cf, text='ЕГРПОУ    ')
+        self.okpo_entry = tk.Entry(row4_cf, width=26)
+
         # Pay conditions variances with fill value as default for user
-        self.pay_conditions_label = tk.Label(row4_cf, text='Условия оплаты', padx=10)
-        self.pay_conditions_box = ttk.Combobox(row4_cf, width=15,
+        self.pay_conditions_label = tk.Label(row4_cf, text='Условия оплаты',
+                                             padx=0)
+        self.pay_conditions_box = ttk.Combobox(row4_cf, width=19,
                                                state='disable')
         self.pay_conditions_box['values'] = list(self.pay_conditions)
         self.pay_conditions_box.current(list(self.pay_conditions).
                                         index(self.PayConditionsDefault))
-        self.initiator_label = tk.Label(row4_cf, text='Инициатор')
-        self.initiator_name = tk.Entry(row4_cf, width=20)
+
         sc = tk.Entry(row4_cf, width=15)
+
+        self._row4_pack()
+
+        # Fifth Fill Frame
+        row5_cf = tk.Frame(self, name='row5_cf', padx=15)
+
+        self.csp = tk.Label(row5_cf, text='CSP                 ', padx=9)
+        self.csp_entry = tk.Entry(row5_cf, width=26)
+        self.initiator_label = tk.Label(row5_cf, text='Инициатор')
+        self.initiator_name = tk.Entry(row5_cf, width=22)
 
         # Text Frame
         text_cf = ttk.LabelFrame(self, text=' Описание заявки ', name='text_cf')
 
         self.customFont = tkFont.Font(family="Arial", size=10)
         self.desc_text = tk.Text(text_cf, font=self.customFont)  # input and output box
-        self.desc_text.configure(width=100)
+        self.desc_text.configure(width=115)
         self.desc_text.pack(in_=text_cf, expand=True)
 
         # Approval choose Frame
@@ -511,7 +530,8 @@ class CreateForm(PaymentFrame):
         self.approval_box = ttk.Combobox(appr_cf, width=40, state='readonly')
         self.approval_box['values'] = list(self.approvals_for_first_stage)
 
-        self._row4_pack()
+        self._row5_pack()
+
 
         # Bottom Frame with buttons
         bottom_cf = tk.Frame(self, name='bottom_cf')
@@ -536,6 +556,7 @@ class CreateForm(PaymentFrame):
         row2_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
         row3_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
         row4_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
+        row5_cf.pack(side=tk.TOP, fill=tk.X, pady=5)
         text_cf.pack(side=tk.TOP, fill=tk.X, expand=True, padx=15, pady=15)
 
     def _check_limit(self, *args, **kwargs):
@@ -565,7 +586,7 @@ class CreateForm(PaymentFrame):
         self.approval_box.set('')
         self.cashless.set('безналичный')
         self.initiator_name.delete(0, tk.END)
-
+        self.okpo_entry.delete(0, tk.END)
 
     def _convert_date(self, date, output=None):
         """ Take date and convert it into output format.
@@ -609,7 +630,8 @@ class CreateForm(PaymentFrame):
                    'is_cashless': is_cashless,
                    'payconditionsID': self.pay_conditions[
                                                 self.pay_conditions_box.get()],
-                   'initiator_name': self.initiator_name.get()
+                   'initiator_name': self.initiator_name.get(),
+                   'okpo': self.okpo_entry.get()
                    }
         created_success = self.conn.create_request(userID=self.userID, **request)
         if created_success == 1:
@@ -631,7 +653,7 @@ class CreateForm(PaymentFrame):
                     messagetitle, 'Произошла ошибка при создании заявки'
             )
 
-    def _fill_from_PreviewForm(self, mvz, office, category, contragent,
+    def _fill_from_PreviewForm(self, mvz, office, category, contragent, okpo,
                                description):
         """ When button "Создать из заявки" from PreviewForm is activated,
         fill some fields taken from choosed in PreviewForm request.
@@ -642,6 +664,7 @@ class CreateForm(PaymentFrame):
         self.office_box.set(office)
         self.category_box.set(category)
         self.contragent_entry.insert(0, contragent)
+        self.okpo_entry.insert(0, okpo)
         self.desc_text.insert('end', description.strip() if type(description) == str
                               else description)
 
@@ -662,36 +685,41 @@ class CreateForm(PaymentFrame):
 
     def _row1_pack(self):
         self.mvz_label.pack(side=tk.LEFT)
-        self.mvz_box.pack(side=tk.LEFT, padx=5)
+        self.mvz_box.pack(side=tk.LEFT, padx=60)
+        self.mvz_sap_label.pack(side=tk.LEFT)
         self.mvz_sap.pack(side=tk.LEFT)
-        self.category_box.pack(side=tk.RIGHT, padx=5)
-        self.category_label.pack(side=tk.RIGHT)
+        self.office_label.pack(side=tk.LEFT)
+        self.office_box.pack(side=tk.LEFT, padx=5)
 
     def _row2_pack(self):
-        self.office_label.pack(side=tk.LEFT)
-        self.office_box.pack(side=tk.LEFT)
-        self.csp_entry.pack(side=tk.RIGHT, padx=5)
-        self.csp.pack(side=tk.RIGHT)
-        self.contragent_entry.pack(side=tk.RIGHT, padx=5)
-        self.contragent_label.pack(side=tk.RIGHT)
+        self.category_label.pack(side=tk.LEFT)
+        self.category_box.pack(side=tk.LEFT, padx=30)
+        self.plan_date_label.pack(side=tk.LEFT)
+        self.plan_date_entry.pack(side=tk.LEFT, padx=30)
+        self.sum_label.pack(side=tk.LEFT, padx=0)
+        self.sum_entry.pack(side=tk.LEFT, padx=11)
 
     def _row3_pack(self):
-        self.plan_date_label.pack(side=tk.LEFT)
-        self.plan_date_entry.pack(side=tk.LEFT, padx=5)
+        self.contragent_label.pack(side=tk.LEFT, padx=7)
+        self.contragent_entry.pack(side=tk.LEFT, padx=23)
+        self.cashless_label.pack(side=tk.LEFT)
+        self.cashless.pack(side=tk.LEFT, padx=34)
         self.nds0.pack(side=tk.RIGHT, padx=7)
         self.nds7.pack(side=tk.RIGHT, padx=7)
         self.nds20.pack(side=tk.RIGHT, padx=8)
         self.nds_label.pack(side=tk.RIGHT)
-        self.sum_entry.pack(side=tk.RIGHT, padx=11)
-        self.sum_label.pack(side=tk.RIGHT)
 
     def _row4_pack(self):
-        self.cashless_label.pack(side=tk.LEFT)
-        self.cashless.pack(side=tk.LEFT, padx=16)
-        self.pay_conditions_label.pack(side=tk.LEFT)
-        self.pay_conditions_box.pack(side=tk.LEFT, padx=5)
-        self.initiator_label.pack(side=tk.LEFT, padx=5)
-        self.initiator_name.pack(side=tk.LEFT, padx=5)
+        self.okpo_label.pack(side=tk.LEFT, padx=7)
+        self.okpo_entry.pack(side=tk.LEFT, padx=28)
+        self.pay_conditions_label.pack(side=tk.LEFT, padx=3)
+        self.pay_conditions_box.pack(side=tk.LEFT, padx=16)
+
+    def _row5_pack(self):
+        self.csp.pack(side=tk.LEFT)
+        self.csp_entry.pack(side=tk.LEFT, padx=11)
+        self.initiator_label.pack(side=tk.LEFT, padx=20)
+        self.initiator_name.pack(side=tk.LEFT, padx=25)
         self.approval_label.pack(side=tk.LEFT)
         self.approval_box.pack(side=tk.LEFT, padx=5)
 
@@ -908,10 +936,10 @@ class PreviewForm(PaymentFrame):
         # column name and width
         #self.headings=('a', 'bb', 'cccc')  # for debug
         self.headings = {'№ п/п': 30, 'ID': 0, 'InitiatorID': 0, '№ заявки': 100,
-            'Кем создано': 130, 'Инициатор': 0, 'Дата создания': 80
+            'Кем создано': 130, 'Инициатор': 0,  'Дата создания': 80
             , 'Дата/время создания': 120,'CSP':30, 'МВЗ SAP': 70, 'МВЗ': 150
             , 'Офис': 80, 'Категория': 80, 'Условия оплаты':80
-            , 'Контрагент': 60, 'Плановая дата': 90, 'Сумма без НДС': 85
+            , 'Контрагент': 60, 'ЕГРПОУ': 50, 'Плановая дата': 90, 'Сумма без НДС': 85
             , 'Сумма с НДС': 85, 'Вид платежа':0, 'Статус': 45,
             'Статус заявки': 120, 'Описание': 120, 'ID Утверждающего': 0,
             'Утверждающий': 120}
@@ -1513,7 +1541,7 @@ class AboutFrame(tk.Frame):
             os.startfile(path)
 
         self.copyright_text.insert(tk.INSERT,
-                            'Copyright © 2019 Офис контроллинга логистики\n')
+                            'Copyright © 2020 Офис контроллинга логистики\n')
         self.copyright_text.insert(tk.INSERT, 'MIT License',
                                    hyperlink.add(link_license))
 
