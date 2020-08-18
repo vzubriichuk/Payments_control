@@ -91,7 +91,7 @@ class DBConnect(object):
     @monitor_network_state
     def create_request(self, userID, mvz, office, categoryID, contragent, csp,
                        plan_date, sumtotal, nds, text, approval, is_cashless,
-                       payconditionsID, initiator_name):
+                       payconditionsID, initiator_name, okpo):
         """ Executes procedure that creates new request.
         """
         query = '''
@@ -108,13 +108,14 @@ class DBConnect(object):
                                     @Approval = ?,
                                     @is_cashless = ?,
                                     @PayConditionsID = ?,
-                                    @initiator_name = ?
+                                    @initiator_name = ?,
+                                    @okpo = ?
             '''
         try:
             self.__cursor.execute(query, userID, mvz, office, categoryID,
                                   contragent, plan_date, text,
                                   sumtotal, nds, csp, approval, is_cashless,
-                                  payconditionsID, initiator_name)
+                                  payconditionsID, initiator_name, okpo)
             request_allowed = self.__cursor.fetchone()[0]
             self.__db.commit()
             return request_allowed
@@ -236,13 +237,13 @@ class DBConnect(object):
         query = '''
         select pl.ID as ID, pl.UserID as InitiatorID,
         'ЛГ-' + replace(convert(varchar, date_created, 102),'.','') + '_' + cast(pl.RealID as varchar(7)) as Num,
-        pp.ShortUserName, isNULL(pl.initiator_name, '') as initiator_name
-        , cast(date_created as date) as date_created,
+        pp.ShortUserName, isNULL(pl.initiator_name, '') as initiator_name,
+        cast(date_created as date) as date_created,
         cast(date_created as smalldatetime) as datetime_created,
         isnull(CSP, '') as CSP, isnull(obj.MVZsap, '') as MVZsap,
         isnull(co.FullName, 'ТехМВЗ') as FullName, obj.ServiceName,
         cat.CategoryName, isNULL(p2.ValueDescription, '') as PayConditions, isnull(Contragent, '') as Contragent, 
-        date_planed, SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
+        isnull(OKPO, '') as OKPO, date_planed, SumNoTax, cast(SumNoTax * ((100 + Tax) / 100.0) as numeric(11, 2)),
         IIF(pl.is_cashless = 0, 'наличный', 'безналичный') as is_cashless,
         p.ValueName as StatusName, p.ValueDescription, pl.Description, appr.UserID,
         case when pl.StatusID = 1 then isnull(pappr.ShortUserName, '') else '' end as approval

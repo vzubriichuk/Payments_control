@@ -25,6 +25,7 @@ class RestartRequiredError(Exception):
         expression - input expression in which the error occurred;
         message - explanation of the error.
     """
+
     def __init__(self, expression,
                  message='Необходима перезагрузка приложения'):
         self.expression = expression
@@ -43,7 +44,7 @@ def apply_update():
     with open('payments_checker.inf', 'w') as f:
         f.write(UPDATER_VERSION)
     raise RestartRequiredError(UPDATER_VERSION,
-        'Выполнено критическое обновление.\nПерезапустите приложение')
+                               'Выполнено критическое обновление.\nПерезапустите приложение')
 
 
 def check_meta_update():
@@ -85,17 +86,17 @@ def main():
     try:
         with conn as sql:
             UserLogin = getpass.getuser()
-            # UserLogin = 'm.gromada'
+            # UserLogin = 'sv.lemeshko'
             access_permitted = sql.access_check(UserLogin)
             if not access_permitted:
                 tkp.AccessError()
                 sys.exit()
 
             UserInfo = namedtuple('UserInfo',
-                ['UserID', 'ShortUserName', 'AccessType', 'isSuperUser',
-                 'GroupID', 'PayConditionsID']
-            )
-
+                                  ['UserID', 'ShortUserName', 'AccessType',
+                                   'isSuperUser',
+                                   'GroupID', 'PayConditionsID']
+                                  )
 
             # load references
             user_info = UserInfo(*sql.get_user_info(UserLogin))
@@ -143,3 +144,6 @@ if __name__ == '__main__':
         writelog(e)
     finally:
         sys.exit()
+
+
+
