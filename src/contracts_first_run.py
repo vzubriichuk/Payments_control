@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Aug 20 14:54:51 2019
-
-@author: v.shkaberda
-"""
 from _version import upd_path
 from tkinter import Tk, messagebox
 from win32com.client import Dispatch
@@ -12,9 +6,11 @@ import getpass, os, zipfile, zlib
 SOURCE = zlib.decompress(upd_path).decode()
 TARGET = os.path.join('C:\\Users', getpass.getuser(), 'AppData\\Local')
 DESKTOP = os.path.join('C:\\Users', getpass.getuser(), 'Desktop')
-WDIR = os.path.join(TARGET, 'Payments')
-TARGETFILE = os.path.join(WDIR, 'payments_checker.exe')
-ICONFILE = os.path.join(WDIR, 'resources\\payment.ico')
+WDIR = os.path.join(TARGET, 'Contracts')
+TARGETFILE = os.path.join(WDIR, 'contracts_checker.exe')
+ICONFILE = os.path.join(WDIR, 'resources\\paper.ico')
+
+print(TARGETFILE)
 
 class SuccessMsg(Tk):
     """ Raise an error when user doesn't have permission to work with app.
@@ -23,7 +19,7 @@ class SuccessMsg(Tk):
         super().__init__()
         self.withdraw()  # Do not show main window
         messagebox.showinfo(
-            'Заявки на платежи',
+            'Учёт договоров аренды',
             'Установка завершена.\n'
             'На рабочем столе создан ярлык для запуска.'
         )
@@ -34,7 +30,7 @@ def create_shortcut(path, target='', wDir='', icon=''):
     shortcut = shell.CreateShortCut(path)
     shortcut.Targetpath = target
     shortcut.WorkingDirectory = wDir
-    shortcut.Description = 'Заявки на оплату'
+    shortcut.Description = 'Учёт договоров аренды'
     if icon:
         shortcut.IconLocation = icon
     shortcut.save()
@@ -42,9 +38,9 @@ def create_shortcut(path, target='', wDir='', icon=''):
 def main():
     print('Выполняется начальная установка и создание ярлыков...')
     # extract actual version of app
-    with zipfile.ZipFile(os.path.join(SOURCE, 'Payments.zip'), 'r') as zip_ref:
+    with zipfile.ZipFile(os.path.join(SOURCE, 'Contracts.zip'), 'r') as zip_ref:
         zip_ref.extractall(TARGET)
-    create_shortcut(os.path.join(DESKTOP, 'Заявки на оплату.lnk'),
+    create_shortcut(os.path.join(DESKTOP, 'Учёт договоров аренды.lnk'),
                     TARGETFILE,
                     WDIR,
                     ICONFILE)
