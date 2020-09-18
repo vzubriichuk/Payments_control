@@ -11,7 +11,7 @@ from singleinstance import Singleinstance
 from splash_screen import SplashScreen
 from time import sleep
 from tkinter import Label, PhotoImage
-from tkContracts import NetworkError, UnexpectedError
+from tkPayments import NetworkError, UnexpectedError
 from shutil import copy2
 import os, sys, zlib
 
@@ -46,7 +46,7 @@ def check_updates_and_run_app():
     app_versions = next(os.walk(SOURCE))[1]
     # Determine current version of application
     try:
-        with open('contracts.inf', 'r') as f:
+        with open('payments.inf', 'r') as f:
             version_info = f.readline()
             version_info = versioned(version_info)
     except FileNotFoundError:
@@ -59,12 +59,12 @@ def check_updates_and_run_app():
         path = os.path.join(SOURCE, v)
         for data in os.walk(path):
             update_files(path, *data)
-    # Update version in contracts.inf
+    # Update version in payments.inf
     if new_versions:
-        with open('contracts.inf', 'w') as f:
+        with open('payments.inf', 'w') as f:
             f.write(new_versions[0])
     # Run main executable
-    os.startfile("contracts.exe")
+    os.startfile("payments.exe")
     sleep(5)
 
 
@@ -76,7 +76,7 @@ def main():
                         exception_handlers=exception_handlers)
     root.overrideredirect(True)
 
-    logo = PhotoImage(file='resources/paper.png')
+    logo = PhotoImage(file='resources/payment.png')
     logo_label = Label(root, image=logo)
     logo_label.pack(side='top', pady=40)
 

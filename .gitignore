@@ -33,7 +33,7 @@ MANIFEST
 !src/payments.spec
 
 # DB connect info
-pwd.py
+src/pwd.py
 
 # Installer logs
 pip-log.txt
